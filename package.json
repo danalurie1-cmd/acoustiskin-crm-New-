@@ -1,0 +1,55 @@
+{
+  "name": "acoustiskin-crm",
+  "version": "1.0.0",
+  "description": "Enterprise Customer Relationship Management System for AcoustiSkin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.300.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "vite": "^5.0.8"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "crm",
+    "customer-relationship-management",
+    "sales",
+    "orders",
+    "inventory",
+    "shipping",
+    "tax-calculation",
+    "referral-program",
+    "acoustiskin",
+    "react",
+    "enterprise"
+  ],
+  "author": "AcoustiSkin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/acoustiskin-crm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/acoustiskin-crm/issues"
+  },
+  "homepage": "https://github.com/yourusername/acoustiskin-crm#readme"
+}
