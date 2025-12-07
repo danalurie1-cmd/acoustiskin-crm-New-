@@ -2537,9 +2537,13 @@ const AcoustiSkinCRM = () => {
     </div>
   );
 };
+// AFTER (CORRECT):
+  );
+};
 
-// Continue in next message due to length...
-export default AcoustiSkinCRM;
+);
+};
+
 // PART 2: Modal Components
 // This continues from AcoustiSkinCRM_Complete.jsx
 
@@ -2547,86 +2551,7 @@ export default AcoustiSkinCRM;
 const ModalComponent = ({ type, item, onSave, onClose, customers, products, onAddCommunication, onAddTask, onToggleTask, onDeleteCommunication, onDeleteTask, orders }) => {
   const [formData, setFormData] = useState(item || getDefaultFormData(type));
   const [activePhase1Tab, setActivePhase1Tab] = useState('details');
-  const [newComm, setNewComm] = useState({ type: 'Email', subject: '', content: '', date: '', time: '', outcome: '' });
-  const [newTask, setNewTask] = useState({ taskType: 'Call', title: '', description: '', dueDate: '', priority: 'Medium', assignedTo: '' });
-  const [orderItems, setOrderItems] = useState(item?.items || []);
-
-  function getDefaultFormData(type) {
-    switch(type) {
-      case 'customer':
-        return {
-          // Basic Info
-          firstName: '',
-          lastName: '',
-          company: '',
-          email: '',
-          homePhone: '',
-          mobilePhone: '',
-          
-          // Address
-          billingAddress: {
-            street: '',
-            city: '',
-            state: '',
-            zip: ''
-          },
-          shippingAddress: {
-            street: '',
-            city: '',
-            state: '',
-            zip: ''
-          },
-          
-          // CRM Fields
-          customerType: 'Individual',
-          industry: '',
-          customerSince: new Date().toISOString().split('T')[0],
-          status: 'Prospect',
-          salesRep: '',
-          creditLimit: 0,
-          paymentTerms: 'Net 30',
-          taxExempt: false,
-          
-          // Lead Information
-          leadSource: '',
-          potentialReferrals: 0,
-          
-          // Social Media
-          socialPlatforms: [],
-          socialHandle: '',
-          socialEngagement: '',
-          
-          // Pickleball Profile
-          skillLevel: '',
-          playFrequency: '',
-          paddleBrand: '',
-          groupName: '',
-          productInterests: [],
-          
-          // Communication Preferences
-          contactMethod: 'Email',
-          contactTime: 'Morning',
-          emailOptIn: false,
-          smsOptIn: false,
-          referralInterest: 'Maybe',
-          discountInterest: false,
-          
-          // Referral Data
-          referredBy: null,
-          referralCode: '',
-          referralRewards: 0,
-          totalReferrals: 0,
-          
-          // AI Score (calculated)
-          aiScore: 0,
-          
-          // Phase 1 Data
-          communications: [],
-          tasks: [],
-          
-          // Notes
-          notes: ''
-        };
+  // ... rest of modal code ...
       case 'product':
         return {
           productId: '',
