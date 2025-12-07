@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Package, ShoppingCart, Calendar, TrendingUp, 
-  Settings, Search, Plus, Trash2, Edit2, Save, X, 
-  ChevronRight, Phone, Mail, MapPin, Truck, DollarSign,
-  AlertCircle, CheckSquare, Gift, CreditCard, PieChart, ArrowLeft
+  Search, Plus, Trash2, Edit2, X, Download, Upload,
+  Phone, Mail, DollarSign, Printer, CheckSquare,
+  AlertCircle, Gift, PieChart, ArrowLeft, BarChart2, Settings, Bell
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
 } from 'recharts';
 
-// --- CONSTANTS & DATA ---
-
+// --- CONSTANTS ---
 const US_HOLIDAYS = [
   { date: '2025-01-01', name: "New Year's Day" },
   { date: '2025-01-20', name: "MLK Jr. Day" },
@@ -21,35 +20,31 @@ const US_HOLIDAYS = [
   { date: '2025-12-25', name: "Christmas Day" }
 ];
 
-const TAX_RATES = {
-  'MA': 0.0625, 'RI': 0.07, 'NY': 0.04, 'CA': 0.0725, 'TX': 0.0625, 'FL': 0.06
-};
-
-const SHIPPING_CARRIERS = [
-  "UPS Ground", "UPS 2nd Day Air", "FedEx Ground", "FedEx Overnight", "USPS Priority", "USPS First Class"
-];
+const TAX_RATES = { 'MA': 0.0625, 'RI': 0.07, 'NY': 0.04, 'CA': 0.0725, 'TX': 0.0625, 'FL': 0.06 };
+const SHIPPING_CARRIERS = ["UPS Ground", "UPS 2nd Day Air", "FedEx Ground", "FedEx Overnight", "USPS Priority", "USPS First Class"];
 
 // --- COMPONENTS ---
 
 // 1. DASHBOARD
 const Dashboard = ({ data, navigateTo }) => {
-  const { customers, orders, referrals } = data;
-  
+  const { customers, orders, products } = data;
   const totalRevenue = orders.reduce((sum, order) => order.status !== 'Returned' ? sum + (parseFloat(order.total) || 0) : sum, 0);
   const returnedOrders = orders.filter(o => o.status === 'Returned').length;
-  const activeReferrals = referrals.filter(r => r.status === 'Converted').length;
+  const lowStockItems = products.filter(p => p.quantity < 10);
   
-  const revenueData = [
-    { name: 'Mon', sales: 4000 }, { name: 'Tue', sales: 3000 }, 
-    { name: 'Wed', sales: 2000 }, { name: 'Thu', sales: 2780 },
-    { name: 'Fri', sales: 1890 }, { name: 'Sat', sales: 2390 },
-    { name: 'Sun', sales: 3490 },
-  ];
-
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      <h2 className="text-3xl font-bold text-slate-800">AcoustiSkin Executive Dashboard</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold text-slate-800">AcoustiSkin Dashboard</h2>
+        {lowStockItems.length > 0 && (
+          <div className="flex items-center bg-red-100 text-red-700 px-4 py-2 rounded-lg animate-pulse cursor-pointer" onClick={() => navigateTo('inventory')}>
+            <Bell className="w-5 h-5 mr-2" />
+            <span className="font-bold">{lowStockItems.length} Low Stock Alerts</span>
+          </div>
+        )}
+      </div>
       
+      {/* Clickable Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div onClick={() => navigateTo('orders')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
           <div className="flex justify-between items-center mb-4">
@@ -57,7 +52,6 @@ const Dashboard = ({ data, navigateTo }) => {
             <div className="p-2 bg-green-100 rounded-lg"><DollarSign className="w-5 h-5 text-green-600" /></div>
           </div>
           <p className="text-3xl font-bold text-slate-800">${totalRevenue.toLocaleString()}</p>
-          <p className="text-xs text-green-500 flex items-center mt-2"><TrendingUp className="w-3 h-3 mr-1" /> +12.5% vs last month</p>
         </div>
 
         <div onClick={() => navigateTo('customers')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
@@ -76,201 +70,76 @@ const Dashboard = ({ data, navigateTo }) => {
           <p className="text-3xl font-bold text-slate-800">{returnedOrders}</p>
         </div>
 
-        <div onClick={() => navigateTo('referrals')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
+        <div onClick={() => navigateTo('analytics')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-slate-500 text-sm font-medium">Referral Program</h3>
-            <div className="p-2 bg-orange-100 rounded-lg"><Gift className="w-5 h-5 text-orange-600" /></div>
+            <h3 className="text-slate-500 text-sm font-medium">Analytics</h3>
+            <div className="p-2 bg-purple-100 rounded-lg"><BarChart2 className="w-5 h-5 text-purple-600" /></div>
           </div>
-          <p className="text-3xl font-bold text-slate-800">{activeReferrals} / {referrals.length}</p>
-          <p className="text-xs text-slate-400 mt-2">Converted / Leads</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Revenue Trends</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip />
-                <Line type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} dot={{r: 4}} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Marketing & Referral Sources</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                {name: 'Email', value: 40}, {name: 'Social', value: 30}, 
-                {name: 'Referral', value: 20}, {name: 'Direct', value: 10}
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="value" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="text-sm font-bold text-slate-600">View Reports &rarr;</p>
         </div>
       </div>
     </div>
   );
 };
 
-// 2. CALENDAR
-const CalendarView = ({ tasks, setTasks }) => {
-  const [currentDate] = useState(new Date());
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', date: '', type: 'Meeting' });
-
-  const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const days = Array.from({ length: getDaysInMonth(currentDate) }, (_, i) => i + 1);
-
-  const handleAddTask = () => {
-    setTasks([...tasks, { id: Date.now(), ...newTask }]);
-    setShowTaskModal(false);
-    setNewTask({ title: '', date: '', type: 'Meeting' });
-  };
-
-  return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-          <Calendar className="mr-2" /> Calendar & Tasks
-        </h2>
-        <button onClick={() => setShowTaskModal(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow-lg hover:bg-indigo-700">
-          <Plus className="w-4 h-4 mr-2" /> Schedule Event
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 gap-4">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="font-bold text-center text-slate-400 py-2">{d}</div>
-        ))}
-        {days.map(day => {
-          const dateStr = `2025-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-          const dayTasks = tasks.filter(t => t.date === dateStr);
-          const holiday = US_HOLIDAYS.find(h => h.date === dateStr);
-
-          return (
-            <div key={day} className="bg-white min-h-[100px] border border-slate-200 rounded-lg p-2 hover:shadow-md transition-all">
-              <div className="font-semibold text-slate-700 mb-2 flex justify-between">
-                <span>{day}</span>
-                {holiday && <span className="text-xs bg-red-100 text-red-600 px-1 rounded font-bold" title={holiday.name}>HOLIDAY</span>}
-              </div>
-              <div className="space-y-1">
-                {dayTasks.map(task => (
-                  <div key={task.id} className={`text-xs p-1 rounded truncate text-white ${task.type === 'Meeting' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                    {task.title}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {showTaskModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96 shadow-2xl">
-            <h3 className="text-lg font-bold mb-4">Schedule New Task</h3>
-            <input type="text" placeholder="Event Title" className="w-full mb-3 p-2 border rounded" 
-                   value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
-            <input type="date" className="w-full mb-3 p-2 border rounded" 
-                   value={newTask.date} onChange={e => setNewTask({...newTask, date: e.target.value})} />
-            <select className="w-full mb-4 p-2 border rounded" 
-                    value={newTask.type} onChange={e => setNewTask({...newTask, type: e.target.value})}>
-              <option value="Meeting">Meeting</option>
-              <option value="Task">Task</option>
-              <option value="Follow-up">Follow-up</option>
-            </select>
-            <div className="flex justify-end space-x-2">
-              <button onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-slate-600">Cancel</button>
-              <button onClick={handleAddTask} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 3. CUSTOMER MANAGER
-const CustomerManager = ({ customers, setCustomers }) => {
+// 2. INVENTORY MANAGER (With Bulk Delete)
+const InventoryManager = ({ products, setProducts, searchTerm }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState(null); 
+  const [newProduct, setNewProduct] = useState({ name: '', sku: '', upc: '', price: '', quantity: '' });
+  const [selectedIds, setSelectedIds] = useState([]);
 
-  const emptyCustomer = {
-    firstName: '', lastName: '', company: '', email: '', phone: '', mobile: '',
-    billStreet: '', billCity: '', billState: '', billZip: '',
-    shipStreet: '', shipCity: '', shipState: '', shipZip: '',
-    sameAsBilling: false
-  };
-
-  const [formData, setFormData] = useState(emptyCustomer);
+  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSave = () => {
-    if (currentCustomer) {
-      setCustomers(customers.map(c => c.id === currentCustomer.id ? { ...formData, id: c.id } : c));
-    } else {
-      setCustomers([...customers, { ...formData, id: Date.now() }]);
-    }
+    setProducts([...products, { ...newProduct, id: Date.now() }]);
     setIsModalOpen(false);
+    setNewProduct({ name: '', sku: '', upc: '', price: '', quantity: '' });
   };
 
-  const toggleSameAddress = (checked) => {
-    setFormData(prev => ({
-      ...prev,
-      sameAsBilling: checked,
-      shipStreet: checked ? prev.billStreet : prev.shipStreet,
-      shipCity: checked ? prev.billCity : prev.shipCity,
-      shipState: checked ? prev.billState : prev.shipState,
-      shipZip: checked ? prev.billZip : prev.shipZip,
-    }));
+  const toggleSelect = (id) => {
+    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
+    else setSelectedIds([...selectedIds, id]);
+  };
+
+  const bulkDelete = () => {
+    if(window.confirm(`Delete ${selectedIds.length} items?`)) {
+      setProducts(products.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+    }
   };
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Customer Profiles</h2>
-        <button onClick={() => { setCurrentCustomer(null); setFormData(emptyCustomer); setIsModalOpen(true); }} 
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow hover:bg-indigo-700">
-          <Plus className="w-4 h-4 mr-2" /> Add Customer
-        </button>
+        <h2 className="text-2xl font-bold text-slate-800">Inventory Management</h2>
+        <div className="flex space-x-2">
+          {selectedIds.length > 0 && (
+            <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>
+          )}
+          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow hover:bg-indigo-700">
+            <Plus className="w-4 h-4 mr-2" /> Add Product
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-100 text-slate-600 text-sm uppercase">
+          <thead className="bg-slate-100 text-slate-600 uppercase text-sm">
             <tr>
-              <th className="p-4">Name</th>
-              <th className="p-4">Company</th>
-              <th className="p-4">Contact</th>
-              <th className="p-4">Location</th>
-              <th className="p-4">Actions</th>
+              <th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredProducts.map(p => p.id) : [])} /></th>
+              <th className="p-4">Product Name</th><th className="p-4">SKU</th><th className="p-4">UPC</th><th className="p-4">Price</th><th className="p-4">Qty</th><th className="p-4">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {customers.map(customer => (
-              <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
-                <td className="p-4 font-medium text-slate-800">{customer.firstName} {customer.lastName}</td>
-                <td className="p-4 text-slate-600">{customer.company || '-'}</td>
-                <td className="p-4 text-slate-600 text-sm">
-                  <div className="flex items-center"><Mail className="w-3 h-3 mr-1"/>{customer.email}</div>
-                  <div className="flex items-center mt-1"><Phone className="w-3 h-3 mr-1"/>{customer.phone}</div>
-                </td>
-                <td className="p-4 text-slate-600">{customer.billCity}, {customer.billState}</td>
-                <td className="p-4 flex space-x-2">
-                  <button onClick={() => { setCurrentCustomer(customer); setFormData(customer); setIsModalOpen(true); }} className="text-blue-500 hover:text-blue-700"><Edit2 className="w-4 h-4"/></button>
-                  <button onClick={() => { if(window.confirm("Delete customer?")) setCustomers(customers.filter(c => c.id !== customer.id)); }} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
-                </td>
+          <tbody>
+            {filteredProducts.map(p => (
+              <tr key={p.id} className={`border-t hover:bg-slate-50 ${selectedIds.includes(p.id) ? 'bg-blue-50' : ''}`}>
+                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} /></td>
+                <td className="p-4 font-medium">{p.name}</td>
+                <td className="p-4 font-mono text-sm">{p.sku}</td>
+                <td className="p-4 font-mono text-sm">{p.upc}</td>
+                <td className="p-4">${p.price}</td>
+                <td className="p-4">{p.quantity < 10 ? <span className="text-red-500 font-bold">{p.quantity} (Low)</span> : p.quantity}</td>
+                <td className="p-4"><button onClick={() => setProducts(products.filter(x => x.id !== p.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button></td>
               </tr>
             ))}
           </tbody>
@@ -278,64 +147,19 @@ const CustomerManager = ({ customers, setCustomers }) => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-10">
-          <div className="bg-white p-8 rounded-xl w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between border-b pb-4 mb-6">
-              <h3 className="text-xl font-bold text-slate-800">{currentCustomer ? 'Edit Profile' : 'New Customer Profile'}</h3>
-              <button onClick={() => setIsModalOpen(false)}><X className="w-6 h-6 text-slate-400" /></button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-96">
+            <h3 className="text-xl font-bold mb-4">Add New Product</h3>
+            <input placeholder="Product Name" className="w-full mb-2 p-2 border rounded" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+            <input placeholder="SKU" className="w-full mb-2 p-2 border rounded" value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
+            <input placeholder="UPC Code" className="w-full mb-2 p-2 border rounded" value={newProduct.upc} onChange={e => setNewProduct({...newProduct, upc: e.target.value})} />
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <input type="number" placeholder="Price ($)" className="p-2 border rounded" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+              <input type="number" placeholder="Quantity" className="p-2 border rounded" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} />
             </div>
-            
-            <div className="grid grid-cols-2 gap-6">
-              <div className="col-span-2">
-                <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Contact Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <input placeholder="First Name" className="border p-2 rounded" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
-                  <input placeholder="Last Name" className="border p-2 rounded" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
-                  <input placeholder="Company" className="border p-2 rounded" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-                  <input placeholder="Email" className="border p-2 rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                  <input placeholder="Phone" className="border p-2 rounded" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-                  <input placeholder="Mobile" className="border p-2 rounded" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-500 uppercase mb-3">Billing Address</h4>
-                <div className="space-y-2">
-                  <input placeholder="Street Address" className="w-full border p-2 rounded" value={formData.billStreet} onChange={e => setFormData({...formData, billStreet: e.target.value})} />
-                  <input placeholder="City" className="w-full border p-2 rounded" value={formData.billCity} onChange={e => setFormData({...formData, billCity: e.target.value})} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="State (e.g. MA)" className="border p-2 rounded" value={formData.billState} onChange={e => setFormData({...formData, billState: e.target.value})} />
-                    <input placeholder="Zip" className="border p-2 rounded" value={formData.billZip} onChange={e => setFormData({...formData, billZip: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                   <h4 className="text-sm font-bold text-slate-500 uppercase">Shipping Address</h4>
-                   <label className="text-xs flex items-center cursor-pointer select-none">
-                     <input type="checkbox" className="mr-1" checked={formData.sameAsBilling} onChange={e => toggleSameAddress(e.target.checked)} />
-                     Same as Billing
-                   </label>
-                </div>
-                {!formData.sameAsBilling ? (
-                  <div className="space-y-2">
-                    <input placeholder="Street Address" className="w-full border p-2 rounded" value={formData.shipStreet} onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
-                    <input placeholder="City" className="w-full border p-2 rounded" value={formData.shipCity} onChange={e => setFormData({...formData, shipCity: e.target.value})} />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input placeholder="State" className="border p-2 rounded" value={formData.shipState} onChange={e => setFormData({...formData, shipState: e.target.value})} />
-                      <input placeholder="Zip" className="border p-2 rounded" value={formData.shipZip} onChange={e => setFormData({...formData, shipZip: e.target.value})} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-slate-400 italic text-sm p-4 border rounded bg-slate-50 text-center">Using Billing Address</div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end space-x-3 border-t pt-4">
-              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-slate-600 font-medium">Cancel</button>
-              <button onClick={handleSave} className="px-5 py-2 bg-indigo-600 text-white font-medium rounded shadow-lg hover:bg-indigo-700">Save Customer</button>
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
             </div>
           </div>
         </div>
@@ -344,157 +168,313 @@ const CustomerManager = ({ customers, setCustomers }) => {
   );
 };
 
-// 4. ORDER MANAGER
-const OrderManager = ({ orders, setOrders, customers, products }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  const [newOrder, setNewOrder] = useState({
-    customerId: '', items: [], carrier: 'UPS Ground', shippingCost: 0, status: 'Pending'
-  });
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [selectedQty, setSelectedQty] = useState(1);
+// 3. CALENDAR
+const CalendarView = ({ tasks, setTasks }) => {
+  const [currentDate] = useState(new Date());
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', date: '', type: 'Meeting' });
 
-  const customer = customers.find(c => c.id.toString() === newOrder.customerId);
-  const subtotal = newOrder.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = customer ? (TAX_RATES[customer.shipState] || 0.05) : 0;
-  const taxAmount = subtotal * taxRate;
-  const total = subtotal + taxAmount + parseFloat(newOrder.shippingCost || 0);
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const addItem = () => {
-    const prod = products.find(p => p.id.toString() === selectedProduct);
-    if (!prod) return;
-    setNewOrder({ ...newOrder, items: [...newOrder.items, { ...prod, quantity: parseInt(selectedQty) }] });
-  };
-
-  const saveOrder = () => {
-    setOrders([...orders, { ...newOrder, id: Date.now(), date: new Date().toISOString().split('T')[0], total: total.toFixed(2), tax: taxAmount.toFixed(2) }]);
-    setIsModalOpen(false);
-    setNewOrder({ customerId: '', items: [], carrier: 'UPS Ground', shippingCost: 0, status: 'Pending' });
-  };
-
-  const updateStatus = (id, newStatus) => {
-    setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
+  const handleAddTask = () => {
+    setTasks([...tasks, { id: Date.now(), ...newTask }]);
+    setShowTaskModal(false);
   };
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Order Management</h2>
-        <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center shadow">
-          <Plus className="w-4 h-4 mr-2" /> Create New Order
-        </button>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center"><Calendar className="mr-2" /> Calendar</h2>
+        <button onClick={() => setShowTaskModal(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow"><Plus className="w-4 h-4 mr-2" /> Add Task</button>
       </div>
+      <div className="grid grid-cols-7 gap-4">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="text-center font-bold text-slate-400">{d}</div>)}
+        {days.map(day => {
+          const dateStr = `2025-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          const holiday = US_HOLIDAYS.find(h => h.date === dateStr);
+          const dayTasks = tasks.filter(t => t.date === dateStr);
+          return (
+            <div key={day} className="bg-white min-h-[100px] border rounded p-2 hover:shadow-md">
+              <div className="flex justify-between font-semibold mb-1">
+                <span>{day}</span>
+                {holiday && <span className="text-xs bg-red-100 text-red-600 px-1 rounded">{holiday.name}</span>}
+              </div>
+              {dayTasks.map(t => <div key={t.id} className="text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1">{t.title}</div>)}
+            </div>
+          );
+        })}
+      </div>
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-96">
+            <h3 className="text-lg font-bold mb-4">New Task</h3>
+            <input placeholder="Title" className="w-full mb-3 p-2 border rounded" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
+            <input type="date" className="w-full mb-3 p-2 border rounded" value={newTask.date} onChange={e => setNewTask({...newTask, date: e.target.value})} />
+            <div className="flex justify-end space-x-2"><button onClick={() => setShowTaskModal(false)} className="px-4 py-2">Cancel</button><button onClick={handleAddTask} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-      <div className="bg-white rounded-xl shadow border border-slate-200">
+// 4. CUSTOMERS (With Bulk Delete)
+const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', sameAsBilling: false, billStreet: '', shipStreet: '' });
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const filteredCustomers = customers.filter(c => 
+    c.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.lastName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleSameAddress = (checked) => {
+    setFormData(prev => ({
+      ...prev, sameAsBilling: checked,
+      shipStreet: checked ? prev.billStreet : prev.shipStreet,
+      shipCity: checked ? prev.billCity : prev.shipCity,
+      shipState: checked ? prev.billState : prev.shipState,
+      shipZip: checked ? prev.billZip : prev.shipZip
+    }));
+  };
+
+  const handleSave = () => {
+    setCustomers([...customers, { ...formData, id: Date.now() }]);
+    setIsModalOpen(false);
+  };
+
+  const toggleSelect = (id) => {
+    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
+    else setSelectedIds([...selectedIds, id]);
+  };
+
+  const bulkDelete = () => {
+    if(window.confirm(`Delete ${selectedIds.length} customers?`)) {
+      setCustomers(customers.filter(c => !selectedIds.includes(c.id)));
+      setSelectedIds([]);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Customers</h2>
+        <div className="flex space-x-2">
+           {selectedIds.length > 0 && (
+            <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>
+          )}
+          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center"><Plus className="w-4 h-4 mr-2" /> Add Customer</button>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-100 text-slate-600 text-sm uppercase">
+          <thead className="bg-slate-100">
             <tr>
-              <th className="p-4">Order ID</th>
-              <th className="p-4">Date</th>
-              <th className="p-4">Customer</th>
-              <th className="p-4">Total</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Actions</th>
+              <th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredCustomers.map(c => c.id) : [])} /></th>
+              <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {orders.map(order => {
-              const cust = customers.find(c => c.id.toString() === order.customerId);
-              return (
-                <tr key={order.id} className="hover:bg-slate-50">
-                  <td className="p-4 font-mono text-sm">#{order.id}</td>
-                  <td className="p-4">{order.date}</td>
-                  <td className="p-4 font-medium">{cust ? `${cust.firstName} ${cust.lastName}` : 'Unknown'}</td>
-                  <td className="p-4">${order.total}</td>
-                  <td className="p-4">
-                    <select 
-                      className={`px-2 py-1 rounded text-xs border-none outline-none cursor-pointer ${order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'Returned' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}
-                      value={order.status}
-                      onChange={(e) => updateStatus(order.id, e.target.value)}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Shipped">Shipped</option>
-                      <option value="Returned">Returned</option>
-                    </select>
-                  </td>
-                  <td className="p-4 text-slate-400">
-                    <button className="hover:text-red-500" onClick={() => updateStatus(order.id, 'Returned')} title="Process Return"><ArrowLeft className="w-4 h-4" /></button>
-                  </td>
-                </tr>
-              );
-            })}
+          <tbody>
+            {filteredCustomers.map(c => (
+              <tr key={c.id} className="border-t hover:bg-slate-50">
+                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>
+                <td className="p-4">{c.firstName} {c.lastName}</td>
+                <td className="p-4">{c.email}</td>
+                <td className="p-4"><button onClick={() => setCustomers(customers.filter(x => x.id !== c.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white p-8 rounded-xl w-[900px] max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold mb-6 border-b pb-4">New Order Entry</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-[600px] h-[80vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">New Customer</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <input placeholder="First Name" className="p-2 border rounded" onChange={e => setFormData({...formData, firstName: e.target.value})} />
+              <input placeholder="Last Name" className="p-2 border rounded" onChange={e => setFormData({...formData, lastName: e.target.value})} />
+              <input placeholder="Email" className="p-2 border rounded col-span-2" onChange={e => setFormData({...formData, email: e.target.value})} />
+            </div>
             
-            <div className="grid grid-cols-3 gap-6 mb-6">
-              <div className="col-span-1">
-                <label className="block text-sm font-bold text-slate-600 mb-2">Select Customer</label>
-                <select className="w-full border p-2 rounded" onChange={e => setNewOrder({...newOrder, customerId: e.target.value})}>
-                  <option value="">-- Choose Customer --</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-                </select>
-                {customer && (
-                  <div className="mt-4 p-3 bg-slate-50 rounded border text-sm">
-                    <p className="font-bold">Ship To:</p>
-                    <p>{customer.shipStreet}</p>
-                    <p>{customer.shipCity}, {customer.shipState} {customer.shipZip}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-bold text-slate-600 mb-2">Add Items</label>
-                <div className="flex space-x-2 mb-4">
-                  <select className="flex-1 border p-2 rounded" onChange={e => setSelectedProduct(e.target.value)}>
-                    <option value="">-- Select Product --</option>
-                    {products.map(p => <option key={p.id} value={p.id}>{p.name} - ${p.price}</option>)}
-                  </select>
-                  <input type="number" min="1" className="w-20 border p-2 rounded" value={selectedQty} onChange={e => setSelectedQty(e.target.value)} />
-                  <button onClick={addItem} className="bg-indigo-600 text-white px-4 rounded">Add</button>
-                </div>
-
-                <table className="w-full text-sm border">
-                  <thead className="bg-slate-100"><tr><th className="p-2">Item</th><th className="p-2">Qty</th><th className="p-2">Line Total</th></tr></thead>
-                  <tbody>
-                    {newOrder.items.map((item, idx) => (
-                      <tr key={idx} className="border-t">
-                        <td className="p-2">{item.name}</td>
-                        <td className="p-2">{item.quantity}</td>
-                        <td className="p-2">${(item.price * item.quantity).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <h4 className="font-bold mt-4 mb-2">Billing Address</h4>
+            <input placeholder="Street" className="w-full mb-2 p-2 border rounded" onChange={e => setFormData({...formData, billStreet: e.target.value})} />
+            <div className="grid grid-cols-3 gap-2">
+               <input placeholder="City" className="p-2 border rounded" onChange={e => setFormData({...formData, billCity: e.target.value})} />
+               <input placeholder="State" className="p-2 border rounded" onChange={e => setFormData({...formData, billState: e.target.value})} />
+               <input placeholder="Zip" className="p-2 border rounded" onChange={e => setFormData({...formData, billZip: e.target.value})} />
             </div>
 
-            <div className="grid grid-cols-2 gap-8 border-t pt-6">
+            <div className="flex items-center mt-4 mb-2">
+              <input type="checkbox" id="sameAddr" className="mr-2" onChange={e => toggleSameAddress(e.target.checked)} />
+              <label htmlFor="sameAddr" className="font-bold">Shipping Address Same as Billing?</label>
+            </div>
+
+            {!formData.sameAsBilling && (
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">Shipping Carrier</label>
-                <select className="w-full border p-2 rounded mb-4" onChange={e => setNewOrder({...newOrder, carrier: e.target.value})}>
-                  {SHIPPING_CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <label className="block text-sm font-bold text-slate-600 mb-2">Shipping Cost ($)</label>
-                <input type="number" className="w-full border p-2 rounded" value={newOrder.shippingCost} onChange={e => setNewOrder({...newOrder, shippingCost: e.target.value})} />
+                <h4 className="font-bold mb-2">Shipping Address</h4>
+                <input placeholder="Street" className="w-full mb-2 p-2 border rounded" onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
+                <div className="grid grid-cols-3 gap-2">
+                   <input placeholder="City" className="p-2 border rounded" onChange={e => setFormData({...formData, shipCity: e.target.value})} />
+                   <input placeholder="State" className="p-2 border rounded" onChange={e => setFormData({...formData, shipState: e.target.value})} />
+                   <input placeholder="Zip" className="p-2 border rounded" onChange={e => setFormData({...formData, shipZip: e.target.value})} />
+                </div>
               </div>
+            )}
 
-              <div className="text-right space-y-2">
-                <div className="flex justify-between"><span>Subtotal:</span> <span className="font-bold">${subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-slate-500"><span>Tax ({customer?.shipState || 'NA'}):</span> <span>${taxAmount.toFixed(2)}</span></div>
-                <div className="flex justify-between text-slate-500"><span>Shipping:</span> <span>${parseFloat(newOrder.shippingCost || 0).toFixed(2)}</span></div>
-                <div className="flex justify-between text-xl font-bold text-indigo-700 pt-2 border-t"><span>Total:</span> <span>${total.toFixed(2)}</span></div>
+            <div className="flex justify-end mt-6 space-x-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Save Customer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 5. SETTINGS & DATA MANAGEMENT (New Feature)
+const SettingsManager = ({ data, setData }) => {
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `acoustiskin_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          setData(parsed);
+          alert('Data Imported Successfully!');
+        } catch (err) {
+          alert('Invalid Backup File');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+      <h2 className="text-2xl font-bold">Settings & Data Management</h2>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h3 className="font-bold text-lg mb-4">Backup Data</h3>
+          <p className="text-sm text-slate-500 mb-4">Download a full backup of all customers, orders, and inventory.</p>
+          <button onClick={handleExport} className="bg-indigo-600 text-white px-4 py-2 rounded flex items-center hover:bg-indigo-700">
+            <Download className="w-4 h-4 mr-2" /> Export to JSON
+          </button>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h3 className="font-bold text-lg mb-4">Restore Data</h3>
+          <p className="text-sm text-slate-500 mb-4">Upload a previously saved JSON backup file.</p>
+          <label className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center w-fit cursor-pointer hover:bg-emerald-700">
+            <Upload className="w-4 h-4 mr-2" /> Import Backup
+            <input type="file" className="hidden" accept=".json" onChange={handleImport} />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 6. ORDER MANAGER (With Print)
+const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newOrder, setNewOrder] = useState({ customerId: '', items: [], shippingCost: 0, status: 'Pending' });
+  
+  const filteredOrders = orders.filter(o => o.id.toString().includes(searchTerm) || o.customerName?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const subtotal = newOrder.items.reduce((s, i) => s + (i.price * i.quantity), 0);
+  const customer = customers.find(c => c.id == newOrder.customerId);
+  const tax = subtotal * (customer ? (TAX_RATES[customer.billState] || 0.05) : 0);
+  const total = subtotal + tax + parseFloat(newOrder.shippingCost);
+
+  const addItem = (prodId) => {
+    const p = products.find(x => x.id == prodId);
+    if(p) setNewOrder({...newOrder, items: [...newOrder.items, { ...p, quantity: 1 }]});
+  };
+
+  const handleSave = () => {
+    setOrders([...orders, { ...newOrder, id: Date.now(), total: total.toFixed(2), customerName: customer?.firstName }]);
+    setIsModalOpen(false);
+  };
+
+  const handlePrint = (order) => {
+    const win = window.open('', '', 'width=800,height=600');
+    win.document.write(`<html><head><title>Invoice #${order.id}</title></head><body style="font-family:sans-serif; padding:40px;">
+      <h1>AcoustiSkin Invoice #${order.id}</h1>
+      <p>Customer: ${order.customerName}</p>
+      <p>Total: $${order.total}</p>
+      <p>Status: ${order.status}</p>
+      <script>window.print();</script>
+    </body></html>`);
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen">
+       <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Orders</h2>
+        <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg"><Plus className="inline w-4 h-4 mr-2"/> New Order</button>
+      </div>
+      <div className="bg-white rounded-xl shadow">
+        <table className="w-full text-left">
+          <thead className="bg-slate-100"><tr><th className="p-4">ID</th><th className="p-4">Customer</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead>
+          <tbody>
+            {filteredOrders.map(o => (
+              <tr key={o.id} className="border-t">
+                <td className="p-4">#{o.id}</td><td className="p-4">{o.customerName}</td><td className="p-4">${o.total}</td>
+                <td className="p-4"><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">{o.status}</span></td>
+                <td className="p-4"><button onClick={() => handlePrint(o)} className="text-slate-500 hover:text-indigo-600"><Printer className="w-4 h-4" /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-[800px] h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">New Order</h3>
+            <select className="w-full p-2 border rounded mb-4" onChange={e => setNewOrder({...newOrder, customerId: e.target.value})}>
+              <option>Select Customer...</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+            </select>
+            
+            <div className="mb-4">
+              <h4 className="font-bold mb-2">Add Items</h4>
+              <select className="w-full p-2 border rounded" onChange={e => addItem(e.target.value)}>
+                <option>Select Product to Add...</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price})</option>)}
+              </select>
+              <div className="mt-2 space-y-1">
+                {newOrder.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between bg-slate-50 p-2 text-sm">
+                    <span>{item.name}</span><span>${item.price}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="mt-8 flex justify-end space-x-3">
-              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-slate-600">Cancel</button>
-              <button onClick={saveOrder} className="px-5 py-2 bg-indigo-600 text-white font-bold rounded shadow">Submit Order</button>
+            <div className="border-t pt-4 text-right space-y-1">
+              <div>Subtotal: ${subtotal.toFixed(2)}</div>
+              <div>Tax: ${tax.toFixed(2)}</div>
+              <div>Shipping: <input type="number" className="w-20 border rounded p-1" value={newOrder.shippingCost} onChange={e => setNewOrder({...newOrder, shippingCost: e.target.value})} /></div>
+              <div className="font-bold text-lg">Total: ${total.toFixed(2)}</div>
+            </div>
+
+            <div className="flex justify-end mt-6 space-x-2">
+               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
+               <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Submit Order</button>
             </div>
           </div>
         </div>
@@ -504,72 +484,59 @@ const OrderManager = ({ orders, setOrders, customers, products }) => {
 };
 
 // --- APP SHELL ---
-
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem('acoustiskin_data');
     return saved ? JSON.parse(saved) : {
-      customers: [
-        { id: 1, firstName: 'Dana', lastName: 'Lurie', company: 'AcoustiSkin LLC', email: 'dana@acoustiskin.com', phone: '555-0100', mobile: '555-0200', billCity: 'Boston', billState: 'MA', shipState: 'MA', sameAsBilling: true }
-      ],
-      products: [
-        { id: 101, name: 'AcoustiSkin Pro Paddle', price: 120, stock: 50 },
-        { id: 102, name: 'Silent Skin Overlay', price: 45, stock: 200 }
-      ],
+      customers: [{id:1, firstName:'Dana', lastName:'Lurie', email:'dana@test.com', billState:'MA'}],
+      products: [{id:1, name:'AcoustiSkin Paddle', sku:'AS-001', price:120, quantity:50, upc:'123456789'}],
       orders: [],
-      referrals: [
-        { id: 1, source: 'John Doe', code: 'JOHND20', status: 'Converted' },
-        { id: 2, source: 'Mike Smith', code: 'MIKES55', status: 'Pending' }
-      ],
-      tasks: []
+      tasks: [],
+      referrals: []
     };
   });
 
-  useEffect(() => {
-    localStorage.setItem('acoustiskin_data', JSON.stringify(data));
-  }, [data]);
+  useEffect(() => localStorage.setItem('acoustiskin_data', JSON.stringify(data)), [data]);
 
-  const updateSection = (section, newData) => {
-    setData(prev => ({ ...prev, [section]: newData }));
-  };
+  const update = (key, val) => setData(prev => ({ ...prev, [key]: val }));
 
   const renderContent = () => {
-    switch (currentView) {
+    switch(currentView) {
       case 'dashboard': return <Dashboard data={data} navigateTo={setCurrentView} />;
-      case 'customers': return <CustomerManager customers={data.customers} setCustomers={(d) => updateSection('customers', d)} />;
-      case 'orders': return <OrderManager orders={data.orders} setOrders={(d) => updateSection('orders', d)} customers={data.customers} products={data.products} />;
-      case 'calendar': return <CalendarView tasks={data.tasks} setTasks={(d) => updateSection('tasks', d)} />;
-      case 'referrals': return <div className="p-10 font-bold text-2xl text-slate-500">Referral Program (Analytics Visible on Dashboard)</div>;
+      case 'inventory': return <InventoryManager products={data.products} setProducts={d => update('products', d)} searchTerm={searchTerm} />;
+      case 'calendar': return <CalendarView tasks={data.tasks} setTasks={d => update('tasks', d)} />;
+      case 'customers': return <CustomerManager customers={data.customers} setCustomers={d => update('customers', d)} searchTerm={searchTerm} />;
+      case 'orders': return <OrderManager orders={data.orders} setOrders={d => update('orders', d)} customers={data.customers} products={data.products} searchTerm={searchTerm} />;
+      case 'analytics': return <div className="p-6"><h2 className="text-2xl font-bold">Analytics</h2><p>Coming Soon</p></div>;
+      case 'settings': return <SettingsManager data={data} setData={setData} />;
       default: return <Dashboard data={data} navigateTo={setCurrentView} />;
     }
   };
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900">
-      <div className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-2xl">
-        <div className="p-6 border-b border-slate-700 flex items-center">
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg mr-3 flex items-center justify-center text-white font-bold">A</div>
-          <span className="text-xl font-bold text-white tracking-tight">AcoustiSkin CRM</span>
-        </div>
+      <div className="w-64 bg-slate-900 text-slate-300 flex flex-col">
+        <div className="p-6 border-b border-slate-700 font-bold text-white text-xl">AcoustiSkin CRM</div>
         <nav className="flex-1 p-4 space-y-2">
-          <SidebarItem icon={<PieChart />} label="Dashboard" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} />
-          <SidebarItem icon={<Users />} label="Customers" active={currentView === 'customers'} onClick={() => setCurrentView('customers')} />
-          <SidebarItem icon={<ShoppingCart />} label="Orders" active={currentView === 'orders'} onClick={() => setCurrentView('orders')} />
-          <SidebarItem icon={<Calendar />} label="Calendar" active={currentView === 'calendar'} onClick={() => setCurrentView('calendar')} />
-          <SidebarItem icon={<Gift />} label="Referrals" active={currentView === 'referrals'} onClick={() => setCurrentView('referrals')} />
+          <SidebarItem icon={<PieChart/>} label="Dashboard" onClick={() => setCurrentView('dashboard')} active={currentView==='dashboard'}/>
+          <SidebarItem icon={<Package/>} label="Inventory" onClick={() => setCurrentView('inventory')} active={currentView==='inventory'}/>
+          <SidebarItem icon={<Calendar/>} label="Calendar" onClick={() => setCurrentView('calendar')} active={currentView==='calendar'}/>
+          <SidebarItem icon={<Users/>} label="Customers" onClick={() => setCurrentView('customers')} active={currentView==='customers'}/>
+          <SidebarItem icon={<ShoppingCart/>} label="Orders" onClick={() => setCurrentView('orders')} active={currentView==='orders'}/>
+          <SidebarItem icon={<BarChart2/>} label="Analytics" onClick={() => setCurrentView('analytics')} active={currentView==='analytics'}/>
+          <SidebarItem icon={<Settings/>} label="Settings & Data" onClick={() => setCurrentView('settings')} active={currentView==='settings'}/>
         </nav>
       </div>
       <div className="flex-1 overflow-auto">
         <header className="bg-white h-16 shadow-sm flex items-center justify-between px-8 sticky top-0 z-10">
-           <div className="flex items-center text-slate-400">
+           <div className="flex items-center text-slate-400 w-96">
              <Search className="w-5 h-5 mr-3" />
-             <input placeholder="Global Search..." className="bg-transparent outline-none text-slate-600" />
+             <input placeholder="Search customers, products, orders..." className="bg-transparent outline-none text-slate-600 w-full" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
-           <div className="flex items-center space-x-4">
-             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200">DL</div>
-           </div>
+           <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200">DL</div>
         </header>
         {renderContent()}
       </div>
@@ -577,9 +544,8 @@ export default function App() {
   );
 }
 
-const SidebarItem = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 ${active ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'}`}>
-    <span className="mr-3">{icon}</span>
-    <span className="font-medium">{label}</span>
+const SidebarItem = ({ icon, label, onClick, active }) => (
+  <button onClick={onClick} className={`w-full flex items-center p-3 rounded-lg transition-all ${active ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>
+    <span className="mr-3">{icon}</span><span className="font-medium">{label}</span>
   </button>
 );
