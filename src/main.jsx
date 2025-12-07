@@ -1,9 +1,10 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import AcoustiSkinCRM from './acoustiskin-crm.jsx'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './acoustiskin-crm.jsx'; 
+import './index.css'; 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AcoustiSkinCRM />
+    <App />
   </React.StrictMode>,
-)
+);
