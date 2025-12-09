@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Package, ShoppingCart, Calendar, TrendingUp, 
-  Search, Plus, Trash2, Edit2, X, Download, Upload,
-  Phone, Mail, DollarSign, Printer, CheckSquare,
-  AlertCircle, Gift, PieChart, ArrowLeft, BarChart2, Settings, Bell
+  Search, Plus, Trash2, Edit2, Download, Upload,
+  Phone, Mail, DollarSign, Printer, Gift, 
+  AlertCircle, PieChart, BarChart2, Settings, Bell, 
+  CheckSquare, Globe, Truck, CreditCard, FileText, X
 } from 'lucide-react';
 import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
 
 // --- CONSTANTS ---
@@ -21,16 +22,20 @@ const US_HOLIDAYS = [
 ];
 
 const TAX_RATES = { 'MA': 0.0625, 'RI': 0.07, 'NY': 0.04, 'CA': 0.0725, 'TX': 0.0625, 'FL': 0.06 };
-const SHIPPING_CARRIERS = ["UPS Ground", "UPS 2nd Day Air", "FedEx Ground", "FedEx Overnight", "USPS Priority", "USPS First Class"];
+const CARRIERS = ["UPS", "FedEx", "USPS", "DHL", "Other"];
+const PAYMENT_METHODS = ["Credit Card", "Check", "Wire", "Cash", "Net 30"];
+const ORDER_STATUSES = ["Pending", "Processing", "Shipped", "Delivered", "Returned", "Cancelled"];
+const LEAD_SOURCES = ["Google", "Facebook", "Instagram", "Email", "Referral", "Trade Show", "Direct"];
 
 // --- COMPONENTS ---
 
 // 1. DASHBOARD
 const Dashboard = ({ data, navigateTo }) => {
-  const { customers, orders, products } = data;
-  const totalRevenue = orders.reduce((sum, order) => order.status !== 'Returned' ? sum + (parseFloat(order.total) || 0) : sum, 0);
+  const { customers, orders, products, referrals } = data;
+  const totalRevenue = orders.reduce((sum, order) => order.status !== 'Returned' && order.status !== 'Cancelled' ? sum + (parseFloat(order.total) || 0) : sum, 0);
   const returnedOrders = orders.filter(o => o.status === 'Returned').length;
   const lowStockItems = products.filter(p => p.quantity < 10);
+  const activeReferrals = referrals.filter(r => r.status === 'Converted').length;
   
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
@@ -44,7 +49,7 @@ const Dashboard = ({ data, navigateTo }) => {
         )}
       </div>
       
-      {/* Clickable Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div onClick={() => navigateTo('orders')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
           <div className="flex justify-between items-center mb-4">
@@ -62,6 +67,15 @@ const Dashboard = ({ data, navigateTo }) => {
           <p className="text-3xl font-bold text-slate-800">{customers.length}</p>
         </div>
 
+        <div onClick={() => navigateTo('referrals')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-slate-500 text-sm font-medium">Referral Success</h3>
+            <div className="p-2 bg-orange-100 rounded-lg"><Gift className="w-5 h-5 text-orange-600" /></div>
+          </div>
+          <p className="text-3xl font-bold text-slate-800">{activeReferrals} / {referrals.length}</p>
+          <p className="text-xs text-slate-400 mt-1">Converted / Total</p>
+        </div>
+
         <div onClick={() => navigateTo('orders')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-slate-500 text-sm font-medium">Returns</h3>
@@ -69,36 +83,341 @@ const Dashboard = ({ data, navigateTo }) => {
           </div>
           <p className="text-3xl font-bold text-slate-800">{returnedOrders}</p>
         </div>
+      </div>
 
-        <div onClick={() => navigateTo('analytics')} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-all">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-slate-500 text-sm font-medium">Analytics</h3>
-            <div className="p-2 bg-purple-100 rounded-lg"><BarChart2 className="w-5 h-5 text-purple-600" /></div>
+      {/* Graphs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">Revenue Trends</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={[{name:'Mon',val:4000},{name:'Tue',val:3000},{name:'Wed',val:5000},{name:'Thu',val:2780},{name:'Fri',val:1890}]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <RechartsTooltip />
+                <Line type="monotone" dataKey="val" stroke="#4f46e5" strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <p className="text-sm font-bold text-slate-600">View Reports &rarr;</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">Marketing Sources</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                {name: 'Email', value: 40}, {name: 'Social', value: 30}, 
+                {name: 'Referral', value: 25}, {name: 'Direct', value: 10}
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <RechartsTooltip />
+                <Bar dataKey="value" fill="#0ea5e9" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// 2. INVENTORY MANAGER (With Bulk Delete)
+// 2. REFERRAL PROGRAM
+const ReferralManager = ({ referrals, setReferrals }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentRef, setCurrentRef] = useState(null); // Edit Mode
+  const [formData, setFormData] = useState({ source: '', code: '', status: 'Pending', reward: '0' });
+
+  const handleSave = () => {
+    if (currentRef) {
+      setReferrals(referrals.map(r => r.id === currentRef.id ? { ...formData, id: r.id } : r));
+    } else {
+      setReferrals([...referrals, { ...formData, id: Date.now() }]);
+    }
+    setIsModalOpen(false);
+    setCurrentRef(null);
+    setFormData({ source: '', code: '', status: 'Pending', reward: '0' });
+  };
+
+  const handleEdit = (ref) => {
+    setCurrentRef(ref);
+    setFormData(ref);
+    setIsModalOpen(true);
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-slate-800">Referral Program</h2>
+        <button onClick={() => { setCurrentRef(null); setFormData({ source: '', code: '', status: 'Pending', reward: '0' }); setIsModalOpen(true); }} className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Plus className="w-4 h-4 mr-2"/> Add Referral</button>
+      </div>
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-100"><tr><th className="p-4">Source Name</th><th className="p-4">Code</th><th className="p-4">Reward ($)</th><th className="p-4">Status</th><th className="p-4">Actions</th></tr></thead>
+          <tbody>
+            {referrals.map(r => (
+              <tr key={r.id} className="border-t">
+                <td className="p-4 font-bold">{r.source}</td>
+                <td className="p-4 font-mono bg-slate-100 rounded w-fit px-2">{r.code}</td>
+                <td className="p-4 text-green-600 font-bold">${r.reward}</td>
+                <td className="p-4"><span className={`px-2 py-1 rounded text-xs ${r.status === 'Converted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span></td>
+                <td className="p-4 flex space-x-2">
+                  <button onClick={() => handleEdit(r)} className="text-blue-500"><Edit2 className="w-4 h-4"/></button>
+                  <button onClick={() => setReferrals(referrals.filter(x => x.id !== r.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-96">
+            <h3 className="text-xl font-bold mb-4">{currentRef ? 'Edit Referral' : 'New Referral Partner'}</h3>
+            <input placeholder="Partner Name" className="w-full mb-3 p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} />
+            <input placeholder="Referral Code" className="w-full mb-3 p-2 border rounded" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} />
+            <input placeholder="Reward Amount" type="number" className="w-full mb-3 p-2 border rounded" value={formData.reward} onChange={e => setFormData({...formData, reward: e.target.value})} />
+            <select className="w-full mb-3 p-2 border rounded" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+               <option value="Pending">Pending</option>
+               <option value="Converted">Converted</option>
+               <option value="Paid Out">Paid Out</option>
+            </select>
+            <div className="flex justify-end space-x-2"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2">Cancel</button><button onClick={handleSave} className="px-4 py-2 bg-orange-500 text-white rounded">Save</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 3. CUSTOMER MANAGER (Enterprise Profile - 38 Fields)
+const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentCust, setCurrentCust] = useState(null); // For Editing
+  
+  // The Master 38-Field Object
+  const emptyCustomer = { 
+    id: '', firstName: '', lastName: '', jobTitle: '', company: '', email: '', phone: '', mobile: '', website: '',
+    source: '', referredBy: '', referralCode: '', rewardStatus: '', optIn: false, campaign: '',
+    status: 'Active', type: 'Retail', industry: '', salesRep: '', paymentTerms: 'Due on Receipt', creditLimit: '', taxId: '',
+    sameAsBilling: false, 
+    billStreet: '', billStreet2: '', billCity: '', billState: '', billZip: '', billCountry: 'USA',
+    shipStreet: '', shipStreet2: '', shipCity: '', shipState: '', shipZip: '', shipCountry: 'USA',
+    notes: ''
+  };
+
+  const [formData, setFormData] = useState(emptyCustomer);
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const filteredCustomers = customers.filter(c => 
+    c.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.company.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleSameAddress = (checked) => {
+    setFormData(prev => ({
+      ...prev, sameAsBilling: checked,
+      shipStreet: checked ? prev.billStreet : prev.shipStreet,
+      shipStreet2: checked ? prev.billStreet2 : prev.shipStreet2,
+      shipCity: checked ? prev.billCity : prev.shipCity,
+      shipState: checked ? prev.billState : prev.shipState,
+      shipZip: checked ? prev.billZip : prev.shipZip,
+      shipCountry: checked ? prev.billCountry : prev.shipCountry
+    }));
+  };
+
+  const handleSave = () => {
+    if (currentCust) {
+      setCustomers(customers.map(c => c.id === currentCust.id ? { ...formData, id: c.id } : c));
+    } else {
+      setCustomers([...customers, { ...formData, id: Date.now() }]);
+    }
+    setIsModalOpen(false);
+    setCurrentCust(null);
+  };
+
+  const handleEdit = (customer) => {
+    setCurrentCust(customer);
+    setFormData(customer);
+    setIsModalOpen(true);
+  };
+
+  const bulkDelete = () => {
+    if(window.confirm(`Delete ${selectedIds.length} customers?`)) {
+      setCustomers(customers.filter(c => !selectedIds.includes(c.id)));
+      setSelectedIds([]);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Customer Profiles</h2>
+        <div className="flex space-x-2">
+           {selectedIds.length > 0 && <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>}
+          <button onClick={() => { setCurrentCust(null); setFormData(emptyCustomer); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center"><Plus className="w-4 h-4 mr-2" /> Add Customer</button>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredCustomers.map(c => c.id) : [])} /></th>
+              <th className="p-4">Name</th><th className="p-4">Company</th><th className="p-4">Contact</th><th className="p-4">Type</th><th className="p-4">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredCustomers.map(c => (
+              <tr key={c.id} className="border-t hover:bg-slate-50">
+                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => { if(selectedIds.includes(c.id)) setSelectedIds(selectedIds.filter(x=>x!==c.id)); else setSelectedIds([...selectedIds, c.id]); }} /></td>
+                <td className="p-4 font-bold">{c.firstName} {c.lastName}</td>
+                <td className="p-4 text-slate-500">{c.company}</td>
+                <td className="p-4 text-sm">
+                  <div><Mail className="w-3 h-3 inline mr-1"/>{c.email}</div>
+                  <div><Phone className="w-3 h-3 inline mr-1"/>{c.mobile || c.phone}</div>
+                </td>
+                <td className="p-4"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{c.type}</span></td>
+                <td className="p-4 flex space-x-2">
+                  <button onClick={() => handleEdit(c)} className="text-blue-500"><Edit2 className="w-4 h-4"/></button>
+                  <button onClick={() => setCustomers(customers.filter(x => x.id !== c.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl w-[900px] h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between border-b pb-4 mb-6">
+               <h3 className="text-2xl font-bold">{currentCust ? 'Edit Profile' : 'New Customer Profile'}</h3>
+               <button onClick={() => setIsModalOpen(false)}><X className="w-6 h-6 text-slate-400"/></button>
+            </div>
+            
+            {/* 1. Identity */}
+            <h4 className="text-sm font-bold text-indigo-600 uppercase mb-3 bg-indigo-50 p-2 rounded">1. Identity & Contact</h4>
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <input placeholder="First Name" className="p-2 border rounded" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+              <input placeholder="Last Name" className="p-2 border rounded" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+              <input placeholder="Job Title" className="p-2 border rounded" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+              <input placeholder="Company Name" className="p-2 border rounded" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+              <input placeholder="Email" className="p-2 border rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input placeholder="Work Phone" className="p-2 border rounded" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <input placeholder="Mobile Phone" className="p-2 border rounded" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
+              <input placeholder="Website URL" className="p-2 border rounded" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
+            </div>
+
+            {/* 2. Marketing & Referral */}
+            <h4 className="text-sm font-bold text-orange-600 uppercase mb-3 bg-orange-50 p-2 rounded">2. Marketing & Referrals</h4>
+            <div className="grid grid-cols-4 gap-4 mb-6">
+               <select className="p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})}>
+                 <option value="">-- Source --</option>
+                 {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+               </select>
+               <input placeholder="Referred By (Name)" className="p-2 border rounded" value={formData.referredBy} onChange={e => setFormData({...formData, referredBy: e.target.value})} />
+               <input placeholder="Ref Code Used" className="p-2 border rounded" value={formData.referralCode} onChange={e => setFormData({...formData, referralCode: e.target.value})} />
+               <select className="p-2 border rounded" value={formData.rewardStatus} onChange={e => setFormData({...formData, rewardStatus: e.target.value})}>
+                 <option value="">-- Reward Status --</option>
+                 <option value="Pending">Pending</option>
+                 <option value="Redeemed">Redeemed</option>
+               </select>
+               <div className="col-span-4 flex items-center space-x-4">
+                 <label className="flex items-center"><input type="checkbox" checked={formData.optIn} onChange={e => setFormData({...formData, optIn: e.target.checked})} className="mr-2"/> Newsletter Opt-In</label>
+                 <input placeholder="Campaign Name" className="p-2 border rounded w-64" value={formData.campaign} onChange={e => setFormData({...formData, campaign: e.target.value})} />
+               </div>
+            </div>
+
+            {/* 3. Business Details */}
+            <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 bg-slate-100 p-2 rounded">3. Business Details</h4>
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <select className="p-2 border rounded" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                <option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="Distributor">Distributor</option>
+              </select>
+              <input placeholder="Industry" className="p-2 border rounded" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})} />
+              <input placeholder="Sales Rep" className="p-2 border rounded" value={formData.salesRep} onChange={e => setFormData({...formData, salesRep: e.target.value})} />
+              <select className="p-2 border rounded" value={formData.paymentTerms} onChange={e => setFormData({...formData, paymentTerms: e.target.value})}>
+                {PAYMENT_METHODS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input placeholder="Credit Limit ($)" className="p-2 border rounded" value={formData.creditLimit} onChange={e => setFormData({...formData, creditLimit: e.target.value})} />
+              <input placeholder="Tax Exempt ID" className="p-2 border rounded" value={formData.taxId} onChange={e => setFormData({...formData, taxId: e.target.value})} />
+            </div>
+
+            {/* 4. Addresses */}
+            <div className="grid grid-cols-2 gap-8 mb-6">
+               <div>
+                  <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 border-b">Billing Address</h4>
+                  <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.billStreet} onChange={e => setFormData({...formData, billStreet: e.target.value})} />
+                  <input placeholder="Street 2 (Suite)" className="w-full mb-2 p-2 border rounded" value={formData.billStreet2} onChange={e => setFormData({...formData, billStreet2: e.target.value})} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input placeholder="City" className="p-2 border rounded" value={formData.billCity} onChange={e => setFormData({...formData, billCity: e.target.value})} />
+                    <input placeholder="State" className="p-2 border rounded" value={formData.billState} onChange={e => setFormData({...formData, billState: e.target.value})} />
+                    <input placeholder="Zip" className="p-2 border rounded" value={formData.billZip} onChange={e => setFormData({...formData, billZip: e.target.value})} />
+                    <input placeholder="Country" className="p-2 border rounded" value={formData.billCountry} onChange={e => setFormData({...formData, billCountry: e.target.value})} />
+                  </div>
+               </div>
+               <div>
+                  <div className="flex justify-between items-center border-b mb-3">
+                    <h4 className="text-sm font-bold text-slate-600 uppercase">Shipping Address</h4>
+                    <label className="text-xs flex items-center cursor-pointer"><input type="checkbox" className="mr-1" checked={formData.sameAsBilling} onChange={e => toggleSameAddress(e.target.checked)}/> Same as Billing</label>
+                  </div>
+                  {!formData.sameAsBilling ? (
+                    <>
+                    <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet} onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
+                    <input placeholder="Street 2" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet2} onChange={e => setFormData({...formData, shipStreet2: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input placeholder="City" className="p-2 border rounded" value={formData.shipCity} onChange={e => setFormData({...formData, shipCity: e.target.value})} />
+                      <input placeholder="State" className="p-2 border rounded" value={formData.shipState} onChange={e => setFormData({...formData, shipState: e.target.value})} />
+                      <input placeholder="Zip" className="p-2 border rounded" value={formData.shipZip} onChange={e => setFormData({...formData, shipZip: e.target.value})} />
+                      <input placeholder="Country" className="p-2 border rounded" value={formData.shipCountry} onChange={e => setFormData({...formData, shipCountry: e.target.value})} />
+                    </div>
+                    </>
+                  ) : <div className="p-8 bg-slate-50 text-center text-slate-400 italic rounded">Using Billing Address</div>}
+               </div>
+            </div>
+
+            {/* 5. Internal */}
+            <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 bg-slate-100 p-2 rounded">Internal Notes</h4>
+            <textarea className="w-full p-2 border rounded h-24" placeholder="Enter notes here..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
+
+            <div className="flex justify-end mt-8 space-x-2 border-t pt-4">
+              <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 border rounded hover:bg-slate-100">Cancel</button>
+              <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Save Customer Profile</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 4. INVENTORY MANAGER
 const InventoryManager = ({ products, setProducts, searchTerm }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', sku: '', upc: '', price: '', quantity: '' });
+  const [currentProd, setCurrentProd] = useState(null);
+  const [formData, setFormData] = useState({ name: '', sku: '', upc: '', price: '', quantity: '' });
   const [selectedIds, setSelectedIds] = useState([]);
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSave = () => {
-    setProducts([...products, { ...newProduct, id: Date.now() }]);
+    if(currentProd) {
+      setProducts(products.map(p => p.id === currentProd.id ? { ...formData, id: p.id } : p));
+    } else {
+      setProducts([...products, { ...formData, id: Date.now() }]);
+    }
     setIsModalOpen(false);
-    setNewProduct({ name: '', sku: '', upc: '', price: '', quantity: '' });
+    setCurrentProd(null);
+    setFormData({ name: '', sku: '', upc: '', price: '', quantity: '' });
   };
-
-  const toggleSelect = (id) => {
-    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
-    else setSelectedIds([...selectedIds, id]);
+  
+  const handleEdit = (prod) => {
+    setCurrentProd(prod);
+    setFormData(prod);
+    setIsModalOpen(true);
   };
 
   const bulkDelete = () => {
@@ -113,54 +432,44 @@ const InventoryManager = ({ products, setProducts, searchTerm }) => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-slate-800">Inventory Management</h2>
         <div className="flex space-x-2">
-          {selectedIds.length > 0 && (
-            <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>
-          )}
-          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow hover:bg-indigo-700">
-            <Plus className="w-4 h-4 mr-2" /> Add Product
-          </button>
+          {selectedIds.length > 0 && <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>}
+          <button onClick={() => {setCurrentProd(null); setFormData({ name: '', sku: '', upc: '', price: '', quantity: '' }); setIsModalOpen(true);}} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center shadow"><Plus className="w-4 h-4 mr-2" /> Add Product</button>
         </div>
       </div>
-
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-100 text-slate-600 uppercase text-sm">
-            <tr>
-              <th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredProducts.map(p => p.id) : [])} /></th>
-              <th className="p-4">Product Name</th><th className="p-4">SKU</th><th className="p-4">UPC</th><th className="p-4">Price</th><th className="p-4">Qty</th><th className="p-4">Actions</th>
-            </tr>
+          <thead className="bg-slate-100 uppercase text-sm">
+            <tr><th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredProducts.map(p => p.id) : [])} /></th><th className="p-4">Name</th><th className="p-4">SKU</th><th className="p-4">Price</th><th className="p-4">Qty</th><th className="p-4">Actions</th></tr>
           </thead>
           <tbody>
             {filteredProducts.map(p => (
-              <tr key={p.id} className={`border-t hover:bg-slate-50 ${selectedIds.includes(p.id) ? 'bg-blue-50' : ''}`}>
-                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} /></td>
+              <tr key={p.id} className="border-t hover:bg-slate-50">
+                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => { if(selectedIds.includes(p.id)) setSelectedIds(selectedIds.filter(x=>x!==p.id)); else setSelectedIds([...selectedIds, p.id]); }} /></td>
                 <td className="p-4 font-medium">{p.name}</td>
                 <td className="p-4 font-mono text-sm">{p.sku}</td>
-                <td className="p-4 font-mono text-sm">{p.upc}</td>
                 <td className="p-4">${p.price}</td>
                 <td className="p-4">{p.quantity < 10 ? <span className="text-red-500 font-bold">{p.quantity} (Low)</span> : p.quantity}</td>
-                <td className="p-4"><button onClick={() => setProducts(products.filter(x => x.id !== p.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button></td>
+                <td className="p-4 flex space-x-2">
+                  <button onClick={() => handleEdit(p)} className="text-blue-500"><Edit2 className="w-4 h-4"/></button>
+                  <button onClick={() => setProducts(products.filter(x => x.id !== p.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-xl w-96">
-            <h3 className="text-xl font-bold mb-4">Add New Product</h3>
-            <input placeholder="Product Name" className="w-full mb-2 p-2 border rounded" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-            <input placeholder="SKU" className="w-full mb-2 p-2 border rounded" value={newProduct.sku} onChange={e => setNewProduct({...newProduct, sku: e.target.value})} />
-            <input placeholder="UPC Code" className="w-full mb-2 p-2 border rounded" value={newProduct.upc} onChange={e => setNewProduct({...newProduct, upc: e.target.value})} />
+            <h3 className="text-xl font-bold mb-4">{currentProd ? 'Edit Product' : 'Add New Product'}</h3>
+            <input placeholder="Product Name" className="w-full mb-2 p-2 border rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <input placeholder="SKU" className="w-full mb-2 p-2 border rounded" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+            <input placeholder="UPC" className="w-full mb-2 p-2 border rounded" value={formData.upc} onChange={e => setFormData({...formData, upc: e.target.value})} />
             <div className="grid grid-cols-2 gap-2 mb-4">
-              <input type="number" placeholder="Price ($)" className="p-2 border rounded" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-              <input type="number" placeholder="Quantity" className="p-2 border rounded" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} />
+              <input type="number" placeholder="Price" className="p-2 border rounded" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+              <input type="number" placeholder="Qty" className="p-2 border rounded" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
             </div>
-            <div className="flex justify-end space-x-2">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-            </div>
+            <div className="flex justify-end space-x-2"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2">Cancel</button><button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button></div>
           </div>
         </div>
       )}
@@ -168,7 +477,7 @@ const InventoryManager = ({ products, setProducts, searchTerm }) => {
   );
 };
 
-// 3. CALENDAR
+// 5. CALENDAR
 const CalendarView = ({ tasks, setTasks }) => {
   const [currentDate] = useState(new Date());
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -180,6 +489,11 @@ const CalendarView = ({ tasks, setTasks }) => {
   const handleAddTask = () => {
     setTasks([...tasks, { id: Date.now(), ...newTask }]);
     setShowTaskModal(false);
+    setNewTask({ title: '', date: '', type: 'Meeting' });
+  };
+  
+  const deleteTask = (id) => {
+    setTasks(tasks.filter(t => t.id !== id));
   };
 
   return (
@@ -200,7 +514,12 @@ const CalendarView = ({ tasks, setTasks }) => {
                 <span>{day}</span>
                 {holiday && <span className="text-xs bg-red-100 text-red-600 px-1 rounded">{holiday.name}</span>}
               </div>
-              {dayTasks.map(t => <div key={t.id} className="text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1">{t.title}</div>)}
+              {dayTasks.map(t => (
+                <div key={t.id} className="group relative text-xs bg-blue-100 text-blue-800 p-1 rounded mb-1 flex justify-between items-center">
+                  <span>{t.title}</span>
+                  <button onClick={() => deleteTask(t.id)} className="hidden group-hover:block text-red-500 font-bold ml-1">x</button>
+                </div>
+              ))}
             </div>
           );
         })}
@@ -219,123 +538,7 @@ const CalendarView = ({ tasks, setTasks }) => {
   );
 };
 
-// 4. CUSTOMERS (With Bulk Delete)
-const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', sameAsBilling: false, billStreet: '', shipStreet: '' });
-  const [selectedIds, setSelectedIds] = useState([]);
-
-  const filteredCustomers = customers.filter(c => 
-    c.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.lastName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const toggleSameAddress = (checked) => {
-    setFormData(prev => ({
-      ...prev, sameAsBilling: checked,
-      shipStreet: checked ? prev.billStreet : prev.shipStreet,
-      shipCity: checked ? prev.billCity : prev.shipCity,
-      shipState: checked ? prev.billState : prev.shipState,
-      shipZip: checked ? prev.billZip : prev.shipZip
-    }));
-  };
-
-  const handleSave = () => {
-    setCustomers([...customers, { ...formData, id: Date.now() }]);
-    setIsModalOpen(false);
-  };
-
-  const toggleSelect = (id) => {
-    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
-    else setSelectedIds([...selectedIds, id]);
-  };
-
-  const bulkDelete = () => {
-    if(window.confirm(`Delete ${selectedIds.length} customers?`)) {
-      setCustomers(customers.filter(c => !selectedIds.includes(c.id)));
-      setSelectedIds([]);
-    }
-  };
-
-  return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Customers</h2>
-        <div className="flex space-x-2">
-           {selectedIds.length > 0 && (
-            <button onClick={bulkDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Trash2 className="w-4 h-4 mr-2"/> Delete ({selectedIds.length})</button>
-          )}
-          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center"><Plus className="w-4 h-4 mr-2" /> Add Customer</button>
-        </div>
-      </div>
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="p-4 w-10"><input type="checkbox" onChange={e => setSelectedIds(e.target.checked ? filteredCustomers.map(c => c.id) : [])} /></th>
-              <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCustomers.map(c => (
-              <tr key={c.id} className="border-t hover:bg-slate-50">
-                <td className="p-4"><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>
-                <td className="p-4">{c.firstName} {c.lastName}</td>
-                <td className="p-4">{c.email}</td>
-                <td className="p-4"><button onClick={() => setCustomers(customers.filter(x => x.id !== c.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl w-[600px] h-[80vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4">New Customer</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <input placeholder="First Name" className="p-2 border rounded" onChange={e => setFormData({...formData, firstName: e.target.value})} />
-              <input placeholder="Last Name" className="p-2 border rounded" onChange={e => setFormData({...formData, lastName: e.target.value})} />
-              <input placeholder="Email" className="p-2 border rounded col-span-2" onChange={e => setFormData({...formData, email: e.target.value})} />
-            </div>
-            
-            <h4 className="font-bold mt-4 mb-2">Billing Address</h4>
-            <input placeholder="Street" className="w-full mb-2 p-2 border rounded" onChange={e => setFormData({...formData, billStreet: e.target.value})} />
-            <div className="grid grid-cols-3 gap-2">
-               <input placeholder="City" className="p-2 border rounded" onChange={e => setFormData({...formData, billCity: e.target.value})} />
-               <input placeholder="State" className="p-2 border rounded" onChange={e => setFormData({...formData, billState: e.target.value})} />
-               <input placeholder="Zip" className="p-2 border rounded" onChange={e => setFormData({...formData, billZip: e.target.value})} />
-            </div>
-
-            <div className="flex items-center mt-4 mb-2">
-              <input type="checkbox" id="sameAddr" className="mr-2" onChange={e => toggleSameAddress(e.target.checked)} />
-              <label htmlFor="sameAddr" className="font-bold">Shipping Address Same as Billing?</label>
-            </div>
-
-            {!formData.sameAsBilling && (
-              <div>
-                <h4 className="font-bold mb-2">Shipping Address</h4>
-                <input placeholder="Street" className="w-full mb-2 p-2 border rounded" onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
-                <div className="grid grid-cols-3 gap-2">
-                   <input placeholder="City" className="p-2 border rounded" onChange={e => setFormData({...formData, shipCity: e.target.value})} />
-                   <input placeholder="State" className="p-2 border rounded" onChange={e => setFormData({...formData, shipState: e.target.value})} />
-                   <input placeholder="Zip" className="p-2 border rounded" onChange={e => setFormData({...formData, shipZip: e.target.value})} />
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end mt-6 space-x-2">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Save Customer</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 5. SETTINGS & DATA MANAGEMENT (New Feature)
+// 6. SETTINGS (Backup/Restore)
 const SettingsManager = ({ data, setData }) => {
   const handleExport = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -345,96 +548,113 @@ const SettingsManager = ({ data, setData }) => {
     link.download = `acoustiskin_backup_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
   };
-
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          setData(parsed);
-          alert('Data Imported Successfully!');
-        } catch (err) {
-          alert('Invalid Backup File');
-        }
-      };
+      reader.onload = (event) => { setData(JSON.parse(event.target.result)); alert('Data Restored!'); };
       reader.readAsText(file);
     }
   };
-
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      <h2 className="text-2xl font-bold">Settings & Data Management</h2>
+      <h2 className="text-2xl font-bold">Settings</h2>
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="font-bold text-lg mb-4">Backup Data</h3>
-          <p className="text-sm text-slate-500 mb-4">Download a full backup of all customers, orders, and inventory.</p>
-          <button onClick={handleExport} className="bg-indigo-600 text-white px-4 py-2 rounded flex items-center hover:bg-indigo-700">
-            <Download className="w-4 h-4 mr-2" /> Export to JSON
-          </button>
+          <h3 className="font-bold mb-4">Backup Data</h3>
+          <button onClick={handleExport} className="bg-indigo-600 text-white px-4 py-2 rounded flex items-center"><Download className="w-4 h-4 mr-2" /> Export JSON</button>
         </div>
-
         <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="font-bold text-lg mb-4">Restore Data</h3>
-          <p className="text-sm text-slate-500 mb-4">Upload a previously saved JSON backup file.</p>
-          <label className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center w-fit cursor-pointer hover:bg-emerald-700">
-            <Upload className="w-4 h-4 mr-2" /> Import Backup
-            <input type="file" className="hidden" accept=".json" onChange={handleImport} />
-          </label>
+          <h3 className="font-bold mb-4">Restore Data</h3>
+          <label className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center w-fit cursor-pointer"><Upload className="w-4 h-4 mr-2" /> Import JSON<input type="file" className="hidden" onChange={handleImport} /></label>
         </div>
       </div>
     </div>
   );
 };
 
-// 6. ORDER MANAGER (With Print)
+// 7. ORDER MANAGER (Enterprise Version)
 const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newOrder, setNewOrder] = useState({ customerId: '', items: [], shippingCost: 0, status: 'Pending' });
+  
+  const emptyOrder = { 
+    id: '', customerId: '', poNumber: '', status: 'Pending', 
+    items: [], 
+    subtotal: 0, discount: 0, taxRate: 0, shippingCost: 0, total: 0,
+    shipCarrier: '', tracking: '', 
+    billAddrOverride: '', shipAddrOverride: '',
+    paymentMethod: '', paymentStatus: 'Unpaid'
+  };
+
+  const [newOrder, setNewOrder] = useState(emptyOrder);
   
   const filteredOrders = orders.filter(o => o.id.toString().includes(searchTerm) || o.customerName?.toLowerCase().includes(searchTerm.toLowerCase()));
-  const subtotal = newOrder.items.reduce((s, i) => s + (i.price * i.quantity), 0);
-  const customer = customers.find(c => c.id == newOrder.customerId);
-  const tax = subtotal * (customer ? (TAX_RATES[customer.billState] || 0.05) : 0);
-  const total = subtotal + tax + parseFloat(newOrder.shippingCost);
+  
+  // Recalculate totals whenever items change
+  useEffect(() => {
+    const sub = newOrder.items.reduce((s, i) => s + (i.price * i.quantity), 0);
+    const taxVal = (sub - newOrder.discount) * newOrder.taxRate;
+    const final = (sub - newOrder.discount) + taxVal + parseFloat(newOrder.shippingCost || 0);
+    setNewOrder(prev => ({ ...prev, subtotal: sub, total: final }));
+  }, [newOrder.items, newOrder.discount, newOrder.taxRate, newOrder.shippingCost]);
+
+  // When customer is selected, auto-fill address & tax rate
+  const handleCustomerSelect = (custId) => {
+    const c = customers.find(x => x.id == custId);
+    if(c) {
+      setNewOrder(prev => ({
+        ...prev, customerId: custId,
+        billAddrOverride: `${c.billStreet}, ${c.billCity}, ${c.billState}`,
+        shipAddrOverride: c.sameAsBilling ? `${c.billStreet}, ${c.billCity}, ${c.billState}` : `${c.shipStreet}, ${c.shipCity}, ${c.shipState}`,
+        taxRate: TAX_RATES[c.shipState] || 0.05
+      }));
+    }
+  };
 
   const addItem = (prodId) => {
     const p = products.find(x => x.id == prodId);
-    if(p) setNewOrder({...newOrder, items: [...newOrder.items, { ...p, quantity: 1 }]});
+    if(p) setNewOrder(prev => ({...prev, items: [...prev.items, { ...p, quantity: 1 }]}));
   };
 
   const handleSave = () => {
-    setOrders([...orders, { ...newOrder, id: Date.now(), total: total.toFixed(2), customerName: customer?.firstName }]);
+    const c = customers.find(x => x.id == newOrder.customerId);
+    setOrders([...orders, { ...newOrder, id: Date.now(), date: new Date().toISOString().split('T')[0], customerName: c?.firstName + ' ' + c?.lastName }]);
     setIsModalOpen(false);
   };
 
   const handlePrint = (order) => {
     const win = window.open('', '', 'width=800,height=600');
-    win.document.write(`<html><head><title>Invoice #${order.id}</title></head><body style="font-family:sans-serif; padding:40px;">
-      <h1>AcoustiSkin Invoice #${order.id}</h1>
-      <p>Customer: ${order.customerName}</p>
-      <p>Total: $${order.total}</p>
-      <p>Status: ${order.status}</p>
-      <script>window.print();</script>
-    </body></html>`);
+    win.document.write(`<html><body style="font-family:sans-serif; padding:40px;">
+      <h1>Invoice #${order.id}</h1><hr/>
+      <h3>Customer: ${order.customerName}</h3>
+      <p>PO: ${order.poNumber || 'N/A'}</p>
+      <table style="width:100%; text-align:left; margin-top:20px;">
+        <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+        ${order.items.map(i => `<tr><td>${i.name}</td><td>${i.quantity}</td><td>$${i.price}</td></tr>`).join('')}
+      </table>
+      <hr/>
+      <h3>Total: $${parseFloat(order.total).toFixed(2)}</h3>
+      <script>window.print();</script></body></html>`);
   };
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
        <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Orders</h2>
-        <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg"><Plus className="inline w-4 h-4 mr-2"/> New Order</button>
+        <button onClick={() => { setNewOrder(emptyOrder); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg"><Plus className="inline w-4 h-4 mr-2"/> New Order</button>
       </div>
       <div className="bg-white rounded-xl shadow">
         <table className="w-full text-left">
-          <thead className="bg-slate-100"><tr><th className="p-4">ID</th><th className="p-4">Customer</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead>
+          <thead className="bg-slate-100"><tr><th className="p-4">ID</th><th className="p-4">Date</th><th className="p-4">Customer</th><th className="p-4">Total</th><th className="p-4">Status</th><th className="p-4">Action</th></tr></thead>
           <tbody>
             {filteredOrders.map(o => (
               <tr key={o.id} className="border-t">
-                <td className="p-4">#{o.id}</td><td className="p-4">{o.customerName}</td><td className="p-4">${o.total}</td>
+                <td className="p-4">#{o.id}</td><td className="p-4">{o.date}</td><td className="p-4">{o.customerName}</td><td className="p-4">${parseFloat(o.total).toFixed(2)}</td>
                 <td className="p-4"><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">{o.status}</span></td>
-                <td className="p-4"><button onClick={() => handlePrint(o)} className="text-slate-500 hover:text-indigo-600"><Printer className="w-4 h-4" /></button></td>
+                <td className="p-4 flex space-x-2">
+                  <button onClick={() => handlePrint(o)} className="text-slate-500 hover:text-indigo-600"><Printer className="w-4 h-4" /></button>
+                  <button onClick={() => setOrders(orders.filter(x => x.id !== o.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -443,38 +663,88 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl w-[800px] h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4">New Order</h3>
-            <select className="w-full p-2 border rounded mb-4" onChange={e => setNewOrder({...newOrder, customerId: e.target.value})}>
-              <option>Select Customer...</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-            </select>
+          <div className="bg-white p-8 rounded-xl w-[900px] h-[90vh] overflow-y-auto shadow-2xl">
+            <h3 className="text-xl font-bold mb-6 border-b pb-2">New Order Entry</h3>
             
-            <div className="mb-4">
-              <h4 className="font-bold mb-2">Add Items</h4>
-              <select className="w-full p-2 border rounded" onChange={e => addItem(e.target.value)}>
-                <option>Select Product to Add...</option>
+            {/* Header */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+               <div>
+                 <label className="text-xs font-bold text-slate-500">Customer</label>
+                 <select className="w-full p-2 border rounded" onChange={e => handleCustomerSelect(e.target.value)}>
+                   <option>-- Select Customer --</option>
+                   {customers.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.company})</option>)}
+                 </select>
+               </div>
+               <div><label className="text-xs font-bold text-slate-500">PO Number</label><input className="w-full p-2 border rounded" value={newOrder.poNumber} onChange={e => setNewOrder({...newOrder, poNumber: e.target.value})} /></div>
+               <div>
+                 <label className="text-xs font-bold text-slate-500">Status</label>
+                 <select className="w-full p-2 border rounded" value={newOrder.status} onChange={e => setNewOrder({...newOrder, status: e.target.value})}>
+                   {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                 </select>
+               </div>
+            </div>
+
+            {/* Address Overrides */}
+            <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded">
+               <div><label className="text-xs font-bold">Billing Address (Override)</label><input className="w-full p-1 border rounded" value={newOrder.billAddrOverride} onChange={e => setNewOrder({...newOrder, billAddrOverride: e.target.value})} /></div>
+               <div><label className="text-xs font-bold">Shipping Address (Override)</label><input className="w-full p-1 border rounded" value={newOrder.shipAddrOverride} onChange={e => setNewOrder({...newOrder, shipAddrOverride: e.target.value})} /></div>
+            </div>
+
+            {/* Items */}
+            <div className="mb-6">
+              <h4 className="font-bold mb-2">Order Items</h4>
+              <select className="w-full p-2 border rounded mb-2" onChange={e => addItem(e.target.value)}>
+                <option>+ Add Product</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price})</option>)}
               </select>
-              <div className="mt-2 space-y-1">
-                {newOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between bg-slate-50 p-2 text-sm">
-                    <span>{item.name}</span><span>${item.price}</span>
+              <table className="w-full text-sm border">
+                <thead className="bg-slate-100"><tr><th className="p-2">Item</th><th className="p-2">Price</th><th className="p-2">Qty</th><th className="p-2">Total</th><th className="p-2"></th></tr></thead>
+                <tbody>
+                  {newOrder.items.map((item, idx) => (
+                    <tr key={idx} className="border-t">
+                      <td className="p-2">{item.name}</td>
+                      <td className="p-2">${item.price}</td>
+                      <td className="p-2"><input type="number" className="w-12 border rounded p-1" value={item.quantity} onChange={e => {
+                        const newItems = [...newOrder.items]; newItems[idx].quantity = e.target.value;
+                        setNewOrder({...newOrder, items: newItems});
+                      }} /></td>
+                      <td className="p-2">${(item.price * item.quantity).toFixed(2)}</td>
+                      <td className="p-2"><button onClick={() => setNewOrder({...newOrder, items: newOrder.items.filter((_,i) => i!==idx)})} className="text-red-500">x</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Shipping & Payment */}
+            <div className="grid grid-cols-2 gap-8 border-t pt-4">
+               <div className="space-y-3">
+                  <h4 className="font-bold text-sm uppercase text-slate-500">Shipping Info</h4>
+                  <select className="w-full p-2 border rounded" value={newOrder.shipCarrier} onChange={e => setNewOrder({...newOrder, shipCarrier: e.target.value})}>
+                     <option value="">Select Carrier...</option>
+                     {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input placeholder="Tracking Number" className="w-full p-2 border rounded" value={newOrder.tracking} onChange={e => setNewOrder({...newOrder, tracking: e.target.value})} />
+                  
+                  <h4 className="font-bold text-sm uppercase text-slate-500 mt-4">Payment</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className="p-2 border rounded" value={newOrder.paymentMethod} onChange={e => setNewOrder({...newOrder, paymentMethod: e.target.value})}>{PAYMENT_METHODS.map(p => <option key={p} value={p}>{p}</option>)}</select>
+                    <select className="p-2 border rounded" value={newOrder.paymentStatus} onChange={e => setNewOrder({...newOrder, paymentStatus: e.target.value})}><option>Unpaid</option><option>Paid</option></select>
                   </div>
-                ))}
-              </div>
+               </div>
+
+               <div className="text-right space-y-2">
+                  <div className="flex justify-between"><span>Subtotal:</span><span>${newOrder.subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-red-500"><span>Discount:</span><input type="number" className="w-20 border rounded text-right" value={newOrder.discount} onChange={e => setNewOrder({...newOrder, discount: e.target.value})} /></div>
+                  <div className="flex justify-between text-slate-500"><span>Tax Rate:</span><input type="number" step="0.01" className="w-20 border rounded text-right" value={newOrder.taxRate} onChange={e => setNewOrder({...newOrder, taxRate: e.target.value})} /></div>
+                  <div className="flex justify-between text-slate-500"><span>Shipping:</span><input type="number" className="w-20 border rounded text-right" value={newOrder.shippingCost} onChange={e => setNewOrder({...newOrder, shippingCost: e.target.value})} /></div>
+                  <div className="flex justify-between font-bold text-xl pt-2 border-t"><span>Total:</span><span>${parseFloat(newOrder.total).toFixed(2)}</span></div>
+               </div>
             </div>
 
-            <div className="border-t pt-4 text-right space-y-1">
-              <div>Subtotal: ${subtotal.toFixed(2)}</div>
-              <div>Tax: ${tax.toFixed(2)}</div>
-              <div>Shipping: <input type="number" className="w-20 border rounded p-1" value={newOrder.shippingCost} onChange={e => setNewOrder({...newOrder, shippingCost: e.target.value})} /></div>
-              <div className="font-bold text-lg">Total: ${total.toFixed(2)}</div>
-            </div>
-
-            <div className="flex justify-end mt-6 space-x-2">
+            <div className="flex justify-end mt-8 space-x-2">
                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
-               <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded">Submit Order</button>
+               <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded font-bold">Create Order</button>
             </div>
           </div>
         </div>
@@ -491,11 +761,11 @@ export default function App() {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem('acoustiskin_data');
     return saved ? JSON.parse(saved) : {
-      customers: [{id:1, firstName:'Dana', lastName:'Lurie', email:'dana@test.com', billState:'MA'}],
+      customers: [{id:1, firstName:'Dana', lastName:'Lurie', email:'dana@test.com', billState:'MA', company: 'AcoustiSkin', phone: '555-0199'}],
       products: [{id:1, name:'AcoustiSkin Paddle', sku:'AS-001', price:120, quantity:50, upc:'123456789'}],
       orders: [],
       tasks: [],
-      referrals: []
+      referrals: [{id:1, source:'Dr. Smith', code:'SMITH20', status:'Converted', reward:100}]
     };
   });
 
@@ -510,6 +780,7 @@ export default function App() {
       case 'calendar': return <CalendarView tasks={data.tasks} setTasks={d => update('tasks', d)} />;
       case 'customers': return <CustomerManager customers={data.customers} setCustomers={d => update('customers', d)} searchTerm={searchTerm} />;
       case 'orders': return <OrderManager orders={data.orders} setOrders={d => update('orders', d)} customers={data.customers} products={data.products} searchTerm={searchTerm} />;
+      case 'referrals': return <ReferralManager referrals={data.referrals} setReferrals={d => update('referrals', d)} />;
       case 'analytics': return <div className="p-6"><h2 className="text-2xl font-bold">Analytics</h2><p>Coming Soon</p></div>;
       case 'settings': return <SettingsManager data={data} setData={setData} />;
       default: return <Dashboard data={data} navigateTo={setCurrentView} />;
@@ -526,6 +797,7 @@ export default function App() {
           <SidebarItem icon={<Calendar/>} label="Calendar" onClick={() => setCurrentView('calendar')} active={currentView==='calendar'}/>
           <SidebarItem icon={<Users/>} label="Customers" onClick={() => setCurrentView('customers')} active={currentView==='customers'}/>
           <SidebarItem icon={<ShoppingCart/>} label="Orders" onClick={() => setCurrentView('orders')} active={currentView==='orders'}/>
+          <SidebarItem icon={<Gift/>} label="Referrals" onClick={() => setCurrentView('referrals')} active={currentView==='referrals'}/>
           <SidebarItem icon={<BarChart2/>} label="Analytics" onClick={() => setCurrentView('analytics')} active={currentView==='analytics'}/>
           <SidebarItem icon={<Settings/>} label="Settings & Data" onClick={() => setCurrentView('settings')} active={currentView==='settings'}/>
         </nav>
