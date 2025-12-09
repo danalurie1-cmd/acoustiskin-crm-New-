@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, Package, ShoppingCart, Calendar as CalendarIcon, TrendingUp, 
   Search, Plus, Trash2, Edit2, Download, Upload,
   Phone, Mail, DollarSign, Printer, Gift, 
   AlertCircle, PieChart, BarChart2, Settings, Bell, 
-  CheckSquare, Globe, Truck, CreditCard, FileText, X, ChevronLeft, ChevronRight
+  CheckSquare, Globe, Truck, CreditCard, FileText, X, ChevronLeft, ChevronRight, QrCode, Share2, Copy
 } from 'lucide-react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
@@ -26,6 +26,7 @@ const CARRIERS = ["UPS", "FedEx", "USPS", "DHL", "Other"];
 const PAYMENT_METHODS = ["Credit Card", "Check", "Wire", "Cash", "Net 30"];
 const ORDER_STATUSES = ["Pending", "Processing", "Shipped", "Delivered", "Returned", "Cancelled"];
 const LEAD_SOURCES = ["Google", "Facebook", "Instagram", "Email", "Referral", "Trade Show", "Direct"];
+const REFERRAL_TIERS = ["Tier 1 (Standard)", "Tier 2 (Silver)", "Tier 3 (Gold)", "VIP Partner"];
 
 // --- COMPONENTS ---
 
@@ -122,11 +123,14 @@ const Dashboard = ({ data, navigateTo }) => {
   );
 };
 
-// 2. REFERRAL PROGRAM
+// 2. REFERRAL PROGRAM (Multi-Tier & Marketing)
 const ReferralManager = ({ referrals, setReferrals }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentRef, setCurrentRef] = useState(null);
-  const [formData, setFormData] = useState({ source: '', code: '', status: 'Pending', reward: '0' });
+  const [formData, setFormData] = useState({ 
+    source: '', code: '', status: 'Pending', tier: 'Tier 1 (Standard)', 
+    itemsSold: 0, rewardPerSale: 20, totalRewards: 0 
+  });
 
   const handleSave = () => {
     if (currentRef) {
@@ -136,7 +140,7 @@ const ReferralManager = ({ referrals, setReferrals }) => {
     }
     setIsModalOpen(false);
     setCurrentRef(null);
-    setFormData({ source: '', code: '', status: 'Pending', reward: '0' });
+    setFormData({ source: '', code: '', status: 'Pending', tier: 'Tier 1 (Standard)', itemsSold: 0, rewardPerSale: 20, totalRewards: 0 });
   };
 
   const handleEdit = (ref) => {
@@ -148,19 +152,21 @@ const ReferralManager = ({ referrals, setReferrals }) => {
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Referral Program</h2>
-        <button onClick={() => { setCurrentRef(null); setFormData({ source: '', code: '', status: 'Pending', reward: '0' }); setIsModalOpen(true); }} className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Plus className="w-4 h-4 mr-2"/> Add Referral</button>
+        <h2 className="text-2xl font-bold text-slate-800">Referral Program (Multi-Tier)</h2>
+        <button onClick={() => { setCurrentRef(null); setIsModalOpen(true); }} className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center shadow"><Plus className="w-4 h-4 mr-2"/> Add Partner</button>
       </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-100"><tr><th className="p-4">Source Name</th><th className="p-4">Code</th><th className="p-4">Reward ($)</th><th className="p-4">Status</th><th className="p-4">Actions</th></tr></thead>
+          <thead className="bg-slate-100"><tr><th className="p-4">Partner</th><th className="p-4">Tier</th><th className="p-4">Code</th><th className="p-4">Sales</th><th className="p-4">Reward/Sale</th><th className="p-4">Total Earned</th><th className="p-4">Actions</th></tr></thead>
           <tbody>
             {referrals.map(r => (
               <tr key={r.id} className="border-t">
                 <td className="p-4 font-bold">{r.source}</td>
+                <td className="p-4"><span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">{r.tier}</span></td>
                 <td className="p-4 font-mono bg-slate-100 rounded w-fit px-2">{r.code}</td>
-                <td className="p-4 text-green-600 font-bold">${r.reward}</td>
-                <td className="p-4"><span className={`px-2 py-1 rounded text-xs ${r.status === 'Converted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span></td>
+                <td className="p-4">{r.itemsSold}</td>
+                <td className="p-4">${r.rewardPerSale}</td>
+                <td className="p-4 text-green-600 font-bold">${(r.itemsSold * r.rewardPerSale).toFixed(2)}</td>
                 <td className="p-4 flex space-x-2">
                   <button onClick={() => handleEdit(r)} className="text-blue-500"><Edit2 className="w-4 h-4"/></button>
                   <button onClick={() => setReferrals(referrals.filter(x => x.id !== r.id))} className="text-red-500"><Trash2 className="w-4 h-4"/></button>
@@ -172,17 +178,28 @@ const ReferralManager = ({ referrals, setReferrals }) => {
       </div>
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl w-96">
-            <h3 className="text-xl font-bold mb-4">{currentRef ? 'Edit Referral' : 'New Referral Partner'}</h3>
-            <input placeholder="Partner Name" className="w-full mb-3 p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} />
-            <input placeholder="Referral Code" className="w-full mb-3 p-2 border rounded" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} />
-            <input placeholder="Reward Amount" type="number" className="w-full mb-3 p-2 border rounded" value={formData.reward} onChange={e => setFormData({...formData, reward: e.target.value})} />
-            <select className="w-full mb-3 p-2 border rounded" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
-               <option value="Pending">Pending</option>
-               <option value="Converted">Converted</option>
-               <option value="Paid Out">Paid Out</option>
-            </select>
-            <div className="flex justify-end space-x-2"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2">Cancel</button><button onClick={handleSave} className="px-4 py-2 bg-orange-500 text-white rounded">Save</button></div>
+          <div className="bg-white p-8 rounded-xl w-[500px]">
+            <h3 className="text-xl font-bold mb-4">{currentRef ? 'Edit Partner' : 'New Referral Partner'}</h3>
+            <div className="space-y-3">
+              <input placeholder="Partner Name" className="w-full p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                 <input placeholder="Unique Code" className="p-2 border rounded" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} />
+                 <select className="p-2 border rounded" value={formData.tier} onChange={e => setFormData({...formData, tier: e.target.value})}>
+                   {REFERRAL_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                 <div>
+                   <label className="text-xs font-bold text-slate-500">Items Sold</label>
+                   <input type="number" className="w-full p-2 border rounded" value={formData.itemsSold} onChange={e => setFormData({...formData, itemsSold: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-xs font-bold text-slate-500">Reward Per Sale ($)</label>
+                   <input type="number" className="w-full p-2 border rounded" value={formData.rewardPerSale} onChange={e => setFormData({...formData, rewardPerSale: e.target.value})} />
+                 </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6"><button onClick={() => setIsModalOpen(false)} className="px-4 py-2">Cancel</button><button onClick={handleSave} className="px-4 py-2 bg-orange-500 text-white rounded">Save</button></div>
           </div>
         </div>
       )}
@@ -190,7 +207,7 @@ const ReferralManager = ({ referrals, setReferrals }) => {
   );
 };
 
-// 3. CUSTOMER MANAGER
+// 3. CUSTOMER MANAGER (Enterprise Profile + Marketing Kit)
 const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCust, setCurrentCust] = useState(null);
@@ -207,6 +224,7 @@ const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
 
   const [formData, setFormData] = useState(emptyCustomer);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [activeTab, setActiveTab] = useState('identity'); // Tabs in Modal
 
   const filteredCustomers = customers.filter(c => 
     c.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -249,6 +267,11 @@ const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
     }
   };
 
+  // QR Code Placeholder Generator
+  const generateMarketingKit = () => {
+    alert(`Marketing Kit Generated for ${formData.firstName}!\n\n1. QR Code Created: [QR-${formData.id || 'NEW'}]\n2. Share Link: acoustiskin.com/ref/${formData.lastName.toLowerCase()}20\n3. Email Template Copied to Clipboard.`);
+  };
+
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -289,91 +312,128 @@ const CustomerManager = ({ customers, setCustomers, searchTerm }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl w-[900px] h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between border-b pb-4 mb-6">
+          <div className="bg-white rounded-xl w-[900px] h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-6 border-b flex justify-between items-center bg-white">
                <h3 className="text-2xl font-bold">{currentCust ? 'Edit Profile' : 'New Customer Profile'}</h3>
                <button onClick={() => setIsModalOpen(false)}><X className="w-6 h-6 text-slate-400"/></button>
             </div>
             
-            <h4 className="text-sm font-bold text-indigo-600 uppercase mb-3 bg-indigo-50 p-2 rounded">1. Identity & Contact</h4>
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <input placeholder="First Name" className="p-2 border rounded" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
-              <input placeholder="Last Name" className="p-2 border rounded" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
-              <input placeholder="Job Title" className="p-2 border rounded" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
-              <input placeholder="Company Name" className="p-2 border rounded" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-              <input placeholder="Email" className="p-2 border rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-              <input placeholder="Work Phone" className="p-2 border rounded" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-              <input placeholder="Mobile Phone" className="p-2 border rounded" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
-              <input placeholder="Website URL" className="p-2 border rounded" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
+            {/* Tabs */}
+            <div className="flex bg-slate-50 border-b px-6">
+              {['identity', 'business', 'addresses', 'marketing'].map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 font-bold text-sm uppercase ${activeTab === tab ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500'}`}>
+                  {tab}
+                </button>
+              ))}
             </div>
 
-            <h4 className="text-sm font-bold text-orange-600 uppercase mb-3 bg-orange-50 p-2 rounded">2. Marketing & Referrals</h4>
-            <div className="grid grid-cols-4 gap-4 mb-6">
-               <select className="p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})}>
-                 <option value="">-- Source --</option>
-                 {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-               </select>
-               <input placeholder="Referred By (Name)" className="p-2 border rounded" value={formData.referredBy} onChange={e => setFormData({...formData, referredBy: e.target.value})} />
-               <input placeholder="Ref Code Used" className="p-2 border rounded" value={formData.referralCode} onChange={e => setFormData({...formData, referralCode: e.target.value})} />
-               <select className="p-2 border rounded" value={formData.rewardStatus} onChange={e => setFormData({...formData, rewardStatus: e.target.value})}>
-                 <option value="">-- Reward Status --</option>
-                 <option value="Pending">Pending</option>
-                 <option value="Redeemed">Redeemed</option>
-               </select>
-            </div>
-
-            <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 bg-slate-100 p-2 rounded">3. Business Details</h4>
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <select className="p-2 border rounded" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                <option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="Distributor">Distributor</option>
-              </select>
-              <input placeholder="Industry" className="p-2 border rounded" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})} />
-              <input placeholder="Sales Rep" className="p-2 border rounded" value={formData.salesRep} onChange={e => setFormData({...formData, salesRep: e.target.value})} />
-              <select className="p-2 border rounded" value={formData.paymentTerms} onChange={e => setFormData({...formData, paymentTerms: e.target.value})}>
-                {PAYMENT_METHODS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <input placeholder="Credit Limit ($)" className="p-2 border rounded" value={formData.creditLimit} onChange={e => setFormData({...formData, creditLimit: e.target.value})} />
-              <input placeholder="Tax Exempt ID" className="p-2 border rounded" value={formData.taxId} onChange={e => setFormData({...formData, taxId: e.target.value})} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 mb-6">
-               <div>
-                  <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 border-b">Billing Address</h4>
-                  <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.billStreet} onChange={e => setFormData({...formData, billStreet: e.target.value})} />
-                  <input placeholder="Street 2 (Suite)" className="w-full mb-2 p-2 border rounded" value={formData.billStreet2} onChange={e => setFormData({...formData, billStreet2: e.target.value})} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input placeholder="City" className="p-2 border rounded" value={formData.billCity} onChange={e => setFormData({...formData, billCity: e.target.value})} />
-                    <input placeholder="State" className="p-2 border rounded" value={formData.billState} onChange={e => setFormData({...formData, billState: e.target.value})} />
-                    <input placeholder="Zip" className="p-2 border rounded" value={formData.billZip} onChange={e => setFormData({...formData, billZip: e.target.value})} />
-                    <input placeholder="Country" className="p-2 border rounded" value={formData.billCountry} onChange={e => setFormData({...formData, billCountry: e.target.value})} />
+            {/* Scrollable Content */}
+            <div className="p-8 overflow-y-auto flex-1 bg-white">
+              
+              {activeTab === 'identity' && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <input placeholder="First Name" className="w-full p-2 border rounded" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+                    <input placeholder="Last Name" className="w-full p-2 border rounded" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+                    <input placeholder="Job Title" className="w-full p-2 border rounded" value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                    <input placeholder="Company Name" className="w-full p-2 border rounded" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                   </div>
-               </div>
-               <div>
-                  <div className="flex justify-between items-center border-b mb-3">
-                    <h4 className="text-sm font-bold text-slate-600 uppercase">Shipping Address</h4>
-                    <label className="text-xs flex items-center cursor-pointer"><input type="checkbox" className="mr-1" checked={formData.sameAsBilling} onChange={e => toggleSameAddress(e.target.checked)}/> Same as Billing</label>
+                  <div className="space-y-4">
+                    <input placeholder="Email" className="w-full p-2 border rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <input placeholder="Work Phone" className="w-full p-2 border rounded" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                    <input placeholder="Mobile Phone" className="w-full p-2 border rounded" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
+                    <input placeholder="Website URL" className="w-full p-2 border rounded" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
                   </div>
-                  {!formData.sameAsBilling ? (
-                    <>
-                    <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet} onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
-                    <input placeholder="Street 2" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet2} onChange={e => setFormData({...formData, shipStreet2: e.target.value})} />
+                </div>
+              )}
+
+              {activeTab === 'business' && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <select className="w-full p-2 border rounded" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                      <option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="Distributor">Distributor</option>
+                    </select>
+                    <input placeholder="Industry" className="w-full p-2 border rounded" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})} />
+                    <input placeholder="Sales Rep" className="w-full p-2 border rounded" value={formData.salesRep} onChange={e => setFormData({...formData, salesRep: e.target.value})} />
+                  </div>
+                  <div className="space-y-4">
+                    <select className="w-full p-2 border rounded" value={formData.paymentTerms} onChange={e => setFormData({...formData, paymentTerms: e.target.value})}>
+                      {PAYMENT_METHODS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <input placeholder="Credit Limit ($)" className="w-full p-2 border rounded" value={formData.creditLimit} onChange={e => setFormData({...formData, creditLimit: e.target.value})} />
+                    <input placeholder="Tax Exempt ID" className="w-full p-2 border rounded" value={formData.taxId} onChange={e => setFormData({...formData, taxId: e.target.value})} />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'addresses' && (
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 border-b">Billing Address</h4>
+                    <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.billStreet} onChange={e => setFormData({...formData, billStreet: e.target.value})} />
+                    <input placeholder="Street 2 (Suite)" className="w-full mb-2 p-2 border rounded" value={formData.billStreet2} onChange={e => setFormData({...formData, billStreet2: e.target.value})} />
                     <div className="grid grid-cols-2 gap-2">
-                      <input placeholder="City" className="p-2 border rounded" value={formData.shipCity} onChange={e => setFormData({...formData, shipCity: e.target.value})} />
-                      <input placeholder="State" className="p-2 border rounded" value={formData.shipState} onChange={e => setFormData({...formData, shipState: e.target.value})} />
-                      <input placeholder="Zip" className="p-2 border rounded" value={formData.shipZip} onChange={e => setFormData({...formData, shipZip: e.target.value})} />
-                      <input placeholder="Country" className="p-2 border rounded" value={formData.shipCountry} onChange={e => setFormData({...formData, shipCountry: e.target.value})} />
+                      <input placeholder="City" className="p-2 border rounded" value={formData.billCity} onChange={e => setFormData({...formData, billCity: e.target.value})} />
+                      <input placeholder="State" className="p-2 border rounded" value={formData.billState} onChange={e => setFormData({...formData, billState: e.target.value})} />
+                      <input placeholder="Zip" className="p-2 border rounded" value={formData.billZip} onChange={e => setFormData({...formData, billZip: e.target.value})} />
+                      <input placeholder="Country" className="p-2 border rounded" value={formData.billCountry} onChange={e => setFormData({...formData, billCountry: e.target.value})} />
                     </div>
-                    </>
-                  ) : <div className="p-8 bg-slate-50 text-center text-slate-400 italic rounded">Using Billing Address</div>}
-               </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center border-b mb-3">
+                      <h4 className="text-sm font-bold text-slate-600 uppercase">Shipping Address</h4>
+                      <label className="text-xs flex items-center cursor-pointer"><input type="checkbox" className="mr-1" checked={formData.sameAsBilling} onChange={e => toggleSameAddress(e.target.checked)}/> Same as Billing</label>
+                    </div>
+                    {!formData.sameAsBilling ? (
+                      <>
+                      <input placeholder="Street 1" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet} onChange={e => setFormData({...formData, shipStreet: e.target.value})} />
+                      <input placeholder="Street 2" className="w-full mb-2 p-2 border rounded" value={formData.shipStreet2} onChange={e => setFormData({...formData, shipStreet2: e.target.value})} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input placeholder="City" className="p-2 border rounded" value={formData.shipCity} onChange={e => setFormData({...formData, shipCity: e.target.value})} />
+                        <input placeholder="State" className="p-2 border rounded" value={formData.shipState} onChange={e => setFormData({...formData, shipState: e.target.value})} />
+                        <input placeholder="Zip" className="p-2 border rounded" value={formData.shipZip} onChange={e => setFormData({...formData, shipZip: e.target.value})} />
+                        <input placeholder="Country" className="p-2 border rounded" value={formData.shipCountry} onChange={e => setFormData({...formData, shipCountry: e.target.value})} />
+                      </div>
+                      </>
+                    ) : <div className="p-8 bg-slate-50 text-center text-slate-400 italic rounded">Using Billing Address</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'marketing' && (
+                <div className="space-y-6">
+                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 className="font-bold text-purple-700 mb-2 flex items-center"><QrCode className="w-4 h-4 mr-2"/> Marketing Kit Generator</h4>
+                    <p className="text-sm text-purple-600 mb-4">Generate custom marketing materials for this partner.</p>
+                    <div className="flex space-x-2">
+                       <button onClick={generateMarketingKit} className="bg-purple-600 text-white px-4 py-2 rounded text-sm flex items-center"><QrCode className="w-3 h-3 mr-2"/> Generate QR Code</button>
+                       <button className="bg-white border border-purple-300 text-purple-700 px-4 py-2 rounded text-sm flex items-center"><Share2 className="w-3 h-3 mr-2"/> Copy Share Link</button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-600 mb-1">Acquisition Source</label>
+                      <select className="w-full p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})}>
+                        <option value="">-- Select Source --</option>
+                        {LEAD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-600 mb-1">Referred By (Person)</label>
+                      <input className="w-full p-2 border rounded" value={formData.referredBy} onChange={e => setFormData({...formData, referredBy: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
 
-            <h4 className="text-sm font-bold text-slate-600 uppercase mb-3 bg-slate-100 p-2 rounded">Internal Notes</h4>
-            <textarea className="w-full p-2 border rounded h-24" placeholder="Enter notes here..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
-
-            <div className="flex justify-end mt-8 space-x-2 border-t pt-4">
-              <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 border rounded hover:bg-slate-100">Cancel</button>
-              <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Save Customer Profile</button>
+            {/* Footer */}
+            <div className="p-6 border-t bg-slate-50 flex justify-end space-x-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 border rounded hover:bg-white">Cancel</button>
+              <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-bold">Save Customer Profile</button>
             </div>
           </div>
         </div>
@@ -467,11 +527,10 @@ const InventoryManager = ({ products, setProducts, searchTerm }) => {
 
 // 5. CALENDAR (FIXED Navigation & Holidays)
 const CalendarView = ({ tasks, setTasks }) => {
-  const [currentDate, setCurrentDate] = useState(new Date()); // Tracks the Month view
+  const [currentDate, setCurrentDate] = useState(new Date()); 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', date: '', type: 'Meeting' });
 
-  // Navigation Logic
   const changeMonth = (increment) => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + increment, 1));
   };
@@ -506,7 +565,7 @@ const CalendarView = ({ tasks, setTasks }) => {
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="text-center font-bold text-slate-400">{d}</div>)}
         {days.map(day => {
           const dateStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-          const mmdd = `${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`; // For holiday check
+          const mmdd = `${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`; 
           const holiday = US_HOLIDAYS.find(h => h.date === mmdd);
           const dayTasks = tasks.filter(t => t.date === dateStr);
           return (
@@ -539,7 +598,7 @@ const CalendarView = ({ tasks, setTasks }) => {
   );
 };
 
-// 6. ANALYTICS (FIXED)
+// 6. ANALYTICS
 const Analytics = ({ data }) => {
   return (
     <div className="p-6 bg-slate-50 min-h-screen space-y-8">
@@ -613,10 +672,9 @@ const SettingsManager = ({ data, setData }) => {
   );
 };
 
-// 8. ORDER MANAGER (FIXED: Address Auto-Fill, Zip, Edit/Delete)
+// 8. ORDER MANAGER (FIXED)
 const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
   const emptyOrder = { 
     id: '', customerId: '', poNumber: '', status: 'Pending', 
     items: [], 
@@ -627,10 +685,8 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
   };
 
   const [newOrder, setNewOrder] = useState(emptyOrder);
-  
   const filteredOrders = orders.filter(o => o.id.toString().includes(searchTerm) || o.customerName?.toLowerCase().includes(searchTerm.toLowerCase()));
   
-  // Recalculate totals
   useEffect(() => {
     const sub = newOrder.items.reduce((s, i) => s + (i.price * i.quantity), 0);
     const taxVal = (sub - newOrder.discount) * newOrder.taxRate;
@@ -638,7 +694,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
     setNewOrder(prev => ({ ...prev, subtotal: sub, total: final }));
   }, [newOrder.items, newOrder.discount, newOrder.taxRate, newOrder.shippingCost]);
 
-  // AUTO-POPULATE ADDRESSES
   const handleCustomerSelect = (custId) => {
     const c = customers.find(x => x.id == custId);
     if(c) {
@@ -666,19 +721,11 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
       date: newOrder.date || new Date().toISOString().split('T')[0], 
       customerName: c?.firstName + ' ' + c?.lastName 
     };
-
-    if(newOrder.id) {
-       setOrders(orders.map(o => o.id === newOrder.id ? orderToSave : o));
-    } else {
-       setOrders([...orders, orderToSave]);
-    }
+    if(newOrder.id) { setOrders(orders.map(o => o.id === newOrder.id ? orderToSave : o)); } else { setOrders([...orders, orderToSave]); }
     setIsModalOpen(false);
   };
 
-  const handleEdit = (order) => {
-    setNewOrder(order);
-    setIsModalOpen(true);
-  };
+  const handleEdit = (order) => { setNewOrder(order); setIsModalOpen(true); };
 
   const handlePrint = (order) => {
     const win = window.open('', '', 'width=800,height=600');
@@ -713,8 +760,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-xl w-[900px] h-[90vh] overflow-y-auto shadow-2xl">
             <h3 className="text-xl font-bold mb-6 border-b pb-2">{newOrder.id ? 'Edit Order' : 'New Order Entry'}</h3>
-            
-            {/* Header */}
             <div className="grid grid-cols-3 gap-4 mb-6">
                <div>
                  <label className="text-xs font-bold text-slate-500">Customer</label>
@@ -731,8 +776,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
                  </select>
                </div>
             </div>
-
-            {/* Address Overrides (FIXED ZIP) */}
             <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded">
                <div>
                  <label className="text-xs font-bold">Billing Address</label>
@@ -745,8 +788,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
                  <input className="w-1/2 p-1 border rounded" placeholder="Zip Code" value={newOrder.shipZip} onChange={e => setNewOrder({...newOrder, shipZip: e.target.value})} />
                </div>
             </div>
-
-            {/* Items */}
             <div className="mb-6">
               <h4 className="font-bold mb-2">Order Items</h4>
               <select className="w-full p-2 border rounded mb-2" onChange={e => addItem(e.target.value)}>
@@ -771,8 +812,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
                 </tbody>
               </table>
             </div>
-
-            {/* Shipping & Payment */}
             <div className="grid grid-cols-2 gap-8 border-t pt-4">
                <div className="space-y-3">
                   <h4 className="font-bold text-sm uppercase text-slate-500">Shipping Info</h4>
@@ -781,14 +820,12 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
                      {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <input placeholder="Tracking Number" className="w-full p-2 border rounded" value={newOrder.tracking} onChange={e => setNewOrder({...newOrder, tracking: e.target.value})} />
-                  
                   <h4 className="font-bold text-sm uppercase text-slate-500 mt-4">Payment</h4>
                   <div className="grid grid-cols-2 gap-2">
                     <select className="p-2 border rounded" value={newOrder.paymentMethod} onChange={e => setNewOrder({...newOrder, paymentMethod: e.target.value})}>{PAYMENT_METHODS.map(p => <option key={p} value={p}>{p}</option>)}</select>
                     <select className="p-2 border rounded" value={newOrder.paymentStatus} onChange={e => setNewOrder({...newOrder, paymentStatus: e.target.value})}><option>Unpaid</option><option>Paid</option></select>
                   </div>
                </div>
-
                <div className="text-right space-y-2">
                   <div className="flex justify-between"><span>Subtotal:</span><span>${newOrder.subtotal.toFixed(2)}</span></div>
                   <div className="flex justify-between text-red-500"><span>Discount:</span><input type="number" className="w-20 border rounded text-right" value={newOrder.discount} onChange={e => setNewOrder({...newOrder, discount: e.target.value})} /></div>
@@ -797,7 +834,6 @@ const OrderManager = ({ orders, setOrders, customers, products, searchTerm }) =>
                   <div className="flex justify-between font-bold text-xl pt-2 border-t"><span>Total:</span><span>${parseFloat(newOrder.total).toFixed(2)}</span></div>
                </div>
             </div>
-
             <div className="flex justify-end mt-8 space-x-2">
                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
                <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded font-bold">Save Order</button>
@@ -821,7 +857,7 @@ export default function App() {
       products: [{id:1, name:'AcoustiSkin Paddle', sku:'AS-001', price:120, quantity:50, upc:'123456789'}],
       orders: [],
       tasks: [],
-      referrals: [{id:1, source:'Dr. Smith', code:'SMITH20', status:'Converted', reward:100}]
+      referrals: [{id:1, source:'Dr. Smith', code:'SMITH20', status:'Converted', rewardPerSale:100, itemsSold:1, tier:'Tier 1 (Standard)'}]
     };
   });
 
